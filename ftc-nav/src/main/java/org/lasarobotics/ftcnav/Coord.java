@@ -14,5 +14,6 @@ public class Coord {
     public Coord add(Coord delta) {
         x += delta.x;
         y += delta.y;
+        return this;
     }
 }
