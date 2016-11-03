@@ -12,6 +12,5 @@
 apply from: '../build.common.gradle'
 dependencies {
     compile project(':ftc-nav')
-    compile project(':ftc-library')
     compile project(':ftc-visionlib')
 }

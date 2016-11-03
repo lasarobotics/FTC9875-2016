@@ -1,7 +1,5 @@
-package com.lasarobotics.library.drive;
+package org.firstinspires.ftc.teamcode;
 
-import com.lasarobotics.library.sensor.legacy.hitechnic.Gyroscope;
-import com.lasarobotics.library.util.MathUtil;
 import com.qualcomm.robotcore.hardware.DcMotor;
 
 import java.util.Arrays;
@@ -39,10 +37,10 @@ public final class Mecanum {
             rightBackVal /= wheelPowers[3];
         }
 
-        leftFront.setPower(MathUtil.coerce(-1, 1, leftFrontVal));
-        rightFront.setPower(MathUtil.coerce(-1, 1, rightFrontVal));
-        leftBack.setPower(MathUtil.coerce(-1, 1, leftBackVal));
-        rightBack.setPower(MathUtil.coerce(-1, 1, rightBackVal));
+        leftFront.setPower(coerce(-1, 1, leftFrontVal));
+        rightFront.setPower(coerce(-1, 1, rightFrontVal));
+        leftBack.setPower(coerce(-1, 1, leftBackVal));
+        rightBack.setPower(coerce(-1, 1, rightBackVal));
     }
 
     /**
@@ -58,10 +56,22 @@ public final class Mecanum {
      * @param rightBack   The motor on the back right
      */
     public static void fieldOriented(double y, double x, double c, double gyroheading, DcMotor leftFront, DcMotor rightFront, DcMotor leftBack, DcMotor rightBack) {
-        double cosA = Math.cos(Math.toRadians(Gyroscope.normalize(gyroheading)));
-        double sinA = Math.sin(Math.toRadians(Gyroscope.normalize(gyroheading)));
+        double cosA = Math.cos(Math.toRadians(normalize(gyroheading)));
+        double sinA = Math.sin(Math.toRadians(normalize(gyroheading)));
         double xOut = x * cosA - y * sinA;
         double yOut = x * sinA + y * cosA;
         arcade(yOut, xOut, c, leftFront, rightFront, leftBack, rightBack);
+    }
+
+    public static double coerce(double min, double max, double val) {
+        return val < min ? min : val > max ? max : val;
+    }
+
+    public static double normalize(double heading) {
+        if (heading < 0) {
+            return 360 - (Math.abs(heading) % 360);
+        } else {
+            return (heading % 360);
+        }
     }
 }
