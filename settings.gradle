@@ -1,6 +1,2 @@
-include ':FtcRobotController', ':ftc-cameratest', ':opencv-java', ':ftc-visionlib', ':ftc-robotcontroller', ':ftc-nav'
+include ':FtcRobotController'
 include ':TeamCode'
-project(':ftc-cameratest').projectDir = new File('ftc-vision/ftc-cameratest')
-project(':opencv-java').projectDir = new File('ftc-vision/opencv-java')
-project(':ftc-visionlib').projectDir = new File('ftc-vision/ftc-visionlib')
-project(':ftc-robotcontroller').projectDir = new File('ftc-vision/ftc-robotcontroller')
