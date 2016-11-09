@@ -11,25 +11,30 @@ public class MecanumTestLib extends OpMode {
         STOP, IN, OUT;
     }
 
-    DcMotor left_back, left_front, right_back, right_front;
+    DcMotor left_back, left_front, right_back, right_front, intake, shooter;
     CRServo arm;
     ArmState arm_state = ArmState.STOP;
-    double time_last_toggle = 0;
+    boolean intake_state = false;
+    double time_last_arm_toggle = 0;
+    double time_last_intake_toggle = 0;
     private float tol = 0.05f;
+    private float trigger_tol = 0.25f;
 
     public void init() {
         left_back = hardwareMap.dcMotor.get("left_back");
         left_front = hardwareMap.dcMotor.get("left_front");
         right_back = hardwareMap.dcMotor.get("right_back");
         right_front = hardwareMap.dcMotor.get("right_front");
-        arm = hardwareMap.crservo.get("servo1");
+        intake = hardwareMap.dcMotor.get("intake");
+        shooter = hardwareMap.dcMotor.get("shooter");
+        arm = hardwareMap.crservo.get("button_presser");
     }
 
     public void loop() {
-        Mecanum.arcade(damp(tol, gamepad1.left_stick_y), damp(tol, gamepad1.left_stick_x), damp(tol, gamepad1.right_stick_x), left_front, right_front, left_back, right_back);
+        Mecanum.arcade(damp(tol, gamepad1.left_stick_x), damp(tol, gamepad1.left_stick_y), damp(tol, gamepad1.left_stick_y), left_front, right_front, left_back, right_back);
         if(gamepad1.a) {
-            if(getRuntime() - time_last_toggle > 0.25) {
-                time_last_toggle = getRuntime();
+            if(getRuntime() - time_last_arm_toggle > 0.25) {
+                time_last_arm_toggle = getRuntime();
 
                 switch(arm_state) {
                     case STOP:
@@ -45,6 +50,13 @@ public class MecanumTestLib extends OpMode {
             }
         }
 
+        if(gamepad1.right_trigger > trigger_tol) {
+            if(getRuntime() - time_last_intake_toggle > 0.25) {
+                time_last_intake_toggle = getRuntime();
+                intake_state = !intake_state;
+            }
+        }
+
         switch(arm_state) {
             case STOP:
                 arm.setPower(0);
@@ -56,6 +68,9 @@ public class MecanumTestLib extends OpMode {
                 arm.setPower(-1);
                 break;
         }
+
+        intake.setPower(intake_state ? 1 : 0);
+        shooter.setPower(gamepad1.dpad_up ? 1 : gamepad1.dpad_down ? -1 : 0);
     }
 
     public void stop() {
@@ -63,6 +78,8 @@ public class MecanumTestLib extends OpMode {
         left_front.setPower(0);
         right_back.setPower(0);
         right_front.setPower(0);
+        intake.setPower(0);
+        shooter.setPower(0);
         arm.setPower(0);
     }
 
