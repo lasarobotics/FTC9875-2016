@@ -7,9 +7,13 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 
 @TeleOp(name = "mecanum-lib", group = "test")
 public class MecanumTestLib extends OpMode {
+    private enum ArmState {
+        STOP, IN, OUT;
+    }
+
     DcMotor left_back, left_front, right_back, right_front;
     CRServo arm;
-    boolean arm_moving = false;
+    ArmState arm_state = ArmState.STOP;
     double time_last_toggle = 0;
     private float tol = 0.05f;
 
@@ -26,10 +30,32 @@ public class MecanumTestLib extends OpMode {
         if(gamepad1.a) {
             if(getRuntime() - time_last_toggle > 0.25) {
                 time_last_toggle = getRuntime();
-                arm_moving = !arm_moving;
+
+                switch(arm_state) {
+                    case STOP:
+                        arm_state = ArmState.IN;
+                        break;
+                    case IN:
+                        arm_state = ArmState.OUT;
+                        break;
+                    case OUT:
+                        arm_state = ArmState.STOP;
+                        break;
+                }
             }
         }
-        arm.setPower(arm_moving ? 0.5 : 0);
+
+        switch(arm_state) {
+            case STOP:
+                arm.setPower(0);
+                break;
+            case IN:
+                arm.setPower(1);
+                break;
+            case OUT:
+                arm.setPower(-1);
+                break;
+        }
     }
 
     public void stop() {
