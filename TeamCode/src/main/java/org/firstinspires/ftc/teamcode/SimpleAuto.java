@@ -16,6 +16,7 @@ public class SimpleAuto extends OpMode {
         left_front = hardwareMap.dcMotor.get("left_front");
         right_back = hardwareMap.dcMotor.get("right_back");
         right_front = hardwareMap.dcMotor.get("right_front");
+        shooter = hardwareMap.dcMotor.get("shooter");
         timeSet = false;
     }
 
