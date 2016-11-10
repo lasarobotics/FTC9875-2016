@@ -24,8 +24,8 @@ public class SimpleAuto extends OpMode {
             time = System.currentTimeMillis();
             timeSet = true;
         }
-        if(System.currentTimeMillis() - time < 1000) {
-            Mecanum.arcade(0, 0.5f, 0, left_front, right_front, left_back, right_back);
+        if(System.currentTimeMillis() - time < 2500) {
+            Mecanum.arcade(1f, 0, 0, left_front, right_front, left_back, right_back);
         } else {
             int power = 0;
             left_back.setPower(power);
