@@ -5,7 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 
-@TeleOp(name = "simpledrive", group = "test")
+@TeleOp(name = "simpleauto", group = "test")
 public class SimpleAuto extends OpMode {
     DcMotor left_back, left_front, right_back, right_front, intake, shooter;
     boolean timeSet = false;
