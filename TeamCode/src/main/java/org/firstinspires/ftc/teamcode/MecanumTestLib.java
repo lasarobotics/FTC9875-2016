@@ -70,7 +70,7 @@ public class MecanumTestLib extends OpMode {
         }
 
         intake.setPower(intake_state ? 1 : 0);
-        shooter.setPower(gamepad1.dpad_up ? 1 : gamepad1.dpad_down ? -1 : 0);
+        shooter.setPower(gamepad1.dpad_down ? 1 : 0);
     }
 
     public void stop() {
