@@ -24,7 +24,11 @@ public class SimpleAuto extends OpMode {
             time = System.currentTimeMillis();
             timeSet = true;
         }
-        if(System.currentTimeMillis() - time < 2500) {
+        long elapsed = System.currentTimeMillis() - time;
+        if(elapsed < 2000) {
+            shooter.setPower(1);
+        } else if(elapsed < 3500) {
+            shooter.setPower(0);
             Mecanum.arcade(0, 0, 1f, left_front, right_front, left_back, right_back);
         } else {
             int power = 0;
@@ -32,6 +36,7 @@ public class SimpleAuto extends OpMode {
             right_back.setPower(power);
             left_front.setPower(power);
             right_front.setPower(power);
+            shooter.setPower(0);
         }
     }
 
