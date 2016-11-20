@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import android.util.Log;
+
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
@@ -19,6 +21,7 @@ public class MecanumTestLib extends OpMode {
     double time_last_intake_toggle = 0;
     private float tol = 0.05f;
     private float trigger_tol = 0.25f;
+    private boolean a_pressed = false;
 
     public void init() {
         left_back = hardwareMap.dcMotor.get("left_back");
@@ -31,29 +34,25 @@ public class MecanumTestLib extends OpMode {
     }
 
     public void loop() {
-        Mecanum.arcade(damp(tol, gamepad1.left_stick_x), damp(tol, gamepad1.left_stick_y), damp(tol, gamepad1.left_stick_y), left_front, right_front, left_back, right_back);
-        if(gamepad1.a) {
-            if(getRuntime() - time_last_arm_toggle > 0.25) {
-                time_last_arm_toggle = getRuntime();
-
-                switch(arm_state) {
-                    case STOP:
-                        arm_state = ArmState.IN;
-                        break;
-                    case IN:
-                        arm_state = ArmState.OUT;
-                        break;
-                    case OUT:
-                        arm_state = ArmState.STOP;
-                        break;
-                }
-            }
-        }
+        Mecanum.arcade(damp(tol, gamepad1.left_stick_x), damp(tol, gamepad1.left_stick_y), damp(tol, gamepad1.right_stick_x), left_front, right_front, left_back, right_back);
+        arm_state = gamepad1.dpad_left ? ArmState.IN : gamepad1.dpad_right ? ArmState.OUT : ArmState.STOP;
 
         if(gamepad1.right_trigger > trigger_tol) {
             if(getRuntime() - time_last_intake_toggle > 0.25) {
                 time_last_intake_toggle = getRuntime();
                 intake_state = !intake_state;
+            }
+        }
+
+        if(a_pressed) {
+            if(!gamepad1.a) {
+                //a -> !a
+                a_pressed = false;
+            }
+        } else {
+            if(gamepad1.a) {
+                //!a -> a
+                a_pressed = true;
             }
         }
 
@@ -70,7 +69,7 @@ public class MecanumTestLib extends OpMode {
         }
 
         intake.setPower(intake_state ? 1 : 0);
-        shooter.setPower(gamepad1.dpad_down ? 1 : 0);
+        shooter.setPower(gamepad1.dpad_down ? -1 : 0);
     }
 
     public void stop() {
