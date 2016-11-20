@@ -33,10 +33,13 @@ package org.firstinspires.ftc.robotcontroller.internal;
 
 import android.app.ActionBar;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.res.AssetManager;
 import android.content.res.Configuration;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
@@ -191,11 +194,20 @@ public class FtcRobotControllerActivity extends Activity {
     }
   }
 
+  //-------JS CODE--------
+  public static AssetManager assetmanager = null;
+  private void publicizeAssetManager() {
+    assetmanager = getAssets();
+  }
+  //-------END JS CODE------
+
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     RobotLog.writeLogcatToDisk();
     RobotLog.vv(TAG, "onCreate()");
+
+    publicizeAssetManager(); //JS CODE
 
     receivedUsbAttachmentNotifications = new ConcurrentLinkedQueue<UsbDevice>();
     eventLoop = null;
@@ -289,6 +301,7 @@ public class FtcRobotControllerActivity extends Activity {
         return false;
       }
     });
+
   }
 
   @Override

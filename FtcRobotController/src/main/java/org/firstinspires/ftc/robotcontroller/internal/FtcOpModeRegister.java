@@ -31,11 +31,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. */
 
 package org.firstinspires.ftc.robotcontroller.internal;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+
 import com.google.blocks.ftcrobotcontroller.runtime.BlocksOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManager;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeRegister;
 import com.qualcomm.robotcore.eventloop.opmode.AnnotatedOpModeRegistrar;
 import org.firstinspires.ftc.robotcontroller.external.samples.ConceptNullOp;
+
+import java.io.File;
+import java.util.Scanner;
 
 /**
  * {@link FtcOpModeRegister} is responsible for registering opmodes for use in an FTC game.
@@ -77,5 +83,15 @@ public class FtcOpModeRegister implements OpModeRegister {
         /**
          * Any manual OpMode class registrations should go here.
          */
+
+        try {
+            String[] fileList = FtcRobotControllerActivity.assetmanager.list("js");
+            for(String s : fileList) {
+
+            }
+            //out = new String(buffer, "UTF-8");
+        } catch(Exception e) {
+            //oh well
+        }
     }
 }
