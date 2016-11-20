@@ -12,16 +12,21 @@ public class MecanumTestLib extends OpMode {
     private enum ArmState {
         STOP, IN, OUT;
     }
+    private enum IntakeState {
+        STOP, INTAKE, OUTTAKE;
+    }
 
     DcMotor left_back, left_front, right_back, right_front, intake, shooter;
     CRServo arm;
-    ArmState arm_state = ArmState.STOP;
-    boolean intake_state = false;
-    double time_last_arm_toggle = 0;
-    double time_last_intake_toggle = 0;
+    private ArmState arm_state = ArmState.STOP;
     private float tol = 0.05f;
     private float trigger_tol = 0.25f;
     private boolean a_pressed = false;
+    private boolean left_trigger_pressed = false;
+    private boolean right_trigger_pressed = false;
+    private IntakeState intake_state = IntakeState.STOP;
+    private boolean reverse_direction = false;
+    private static final int DAMPEN_CONSTANT = 4;
 
     public void init() {
         left_back = hardwareMap.dcMotor.get("left_back");
@@ -34,13 +39,49 @@ public class MecanumTestLib extends OpMode {
     }
 
     public void loop() {
-        Mecanum.arcade(damp(tol, gamepad1.left_stick_x), damp(tol, gamepad1.left_stick_y), damp(tol, gamepad1.right_stick_x), left_front, right_front, left_back, right_back);
+        float left_x  =  damp(tol, gamepad1.left_stick_x);
+        float left_y  =  damp(tol, gamepad1.left_stick_y);
+        float right_x = -damp(tol, gamepad1.right_stick_x);
+        if(reverse_direction) {
+            left_y  *= -1;
+            right_x *= -1;
+        }
+        if(gamepad1.b) {
+            //fine-grained control, slower movement
+            left_x  /= DAMPEN_CONSTANT;
+            left_y  /= DAMPEN_CONSTANT;
+            right_x  = 0;
+        }
+        Mecanum.arcade(left_x, left_y, right_x, left_front, right_front, left_back, right_back);
         arm_state = gamepad1.dpad_left ? ArmState.IN : gamepad1.dpad_right ? ArmState.OUT : ArmState.STOP;
 
-        if(gamepad1.right_trigger > trigger_tol) {
-            if(getRuntime() - time_last_intake_toggle > 0.25) {
-                time_last_intake_toggle = getRuntime();
-                intake_state = !intake_state;
+        if(left_trigger_pressed) {
+            if(gamepad1.left_trigger <= trigger_tol) {
+                //left_trigger -> !left_trigger
+                left_trigger_pressed = false;
+            }
+        } else {
+            if(gamepad1.left_trigger > trigger_tol) {
+                //!left_trigger -> left_trigger
+                intake_state = intake_state == IntakeState.OUTTAKE ?
+                        IntakeState.STOP :
+                        IntakeState.OUTTAKE; //toggle outtake
+                left_trigger_pressed = true;
+            }
+        }
+
+        if(right_trigger_pressed) {
+            if(gamepad1.right_trigger <= trigger_tol) {
+                //right_trigger -> !right_trigger
+                right_trigger_pressed = false;
+            }
+        } else {
+            if(gamepad1.right_trigger > trigger_tol) {
+                //!right_trigger -> right_trigger
+                intake_state = intake_state == IntakeState.INTAKE ?
+                        IntakeState.STOP :
+                        IntakeState.INTAKE; //toggle intake
+                right_trigger_pressed = true;
             }
         }
 
@@ -52,6 +93,7 @@ public class MecanumTestLib extends OpMode {
         } else {
             if(gamepad1.a) {
                 //!a -> a
+                reverse_direction = reverse_direction ? false : true;
                 a_pressed = true;
             }
         }
@@ -68,7 +110,17 @@ public class MecanumTestLib extends OpMode {
                 break;
         }
 
-        intake.setPower(intake_state ? 1 : 0);
+        switch (intake_state) {
+            case STOP:
+                intake.setPower(0);
+                break;
+            case INTAKE:
+                intake.setPower(1);
+                break;
+            case OUTTAKE:
+                intake.setPower(-1);
+                break;
+        }
         shooter.setPower(gamepad1.dpad_down ? -1 : 0);
     }
 
