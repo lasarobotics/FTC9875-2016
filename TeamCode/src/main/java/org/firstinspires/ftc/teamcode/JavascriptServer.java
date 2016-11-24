@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 
 import org.mozilla.javascript.Context;
@@ -20,6 +21,7 @@ import java.util.ArrayList;
  * Created by Russell on 11/23/2016.
  */
 
+@TeleOp(name = "js-server", group = "test")
 public class JavascriptServer extends OpMode {
     private enum DataType {
         FULL_SCRIPT,
@@ -29,7 +31,8 @@ public class JavascriptServer extends OpMode {
     }
     private enum DataOutputType {
         LINE_OUTPUT,
-        ERROR
+        ERROR,
+        NONE
     }
     private DataType[] dataTypeValues = DataType.values();
     private DataType intToDataType(int val) {
@@ -48,6 +51,7 @@ public class JavascriptServer extends OpMode {
 
     private static volatile Thread otherThread;
     private static volatile OtherThread otherThreadObj;
+    private static final double VERSION_NUMBER = 1.0;
     private static Object lock = new Object();
     private void deleteOtherThread() {
         synchronized(lock) {
@@ -77,8 +81,8 @@ public class JavascriptServer extends OpMode {
     private class OtherThread implements Runnable {
         private ServerSocket socket;
         private Socket clientSockets;
-        private DataInputStream inFromClient;
-        private DataOutputStream outToClient;
+        private DataInputStream inFromClient; //no other threads should ever touch this
+        private DataOutputStream outToClient; //ditto above
         private Object socketLock = new Object();
 
         @Override
@@ -92,6 +96,7 @@ public class JavascriptServer extends OpMode {
             while(!Thread.currentThread().isInterrupted()) {
                 try {
                     createServer();
+                    outToClient.writeDouble(VERSION_NUMBER); //handshake
                     while(!Thread.currentThread().isInterrupted()) {
                         //server loop
                         DataType type = intToDataType(inFromClient.readInt());
