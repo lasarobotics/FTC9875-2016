@@ -10,12 +10,17 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 
 @TeleOp(name = "encoder-test", group = "test")
 public class EncoderTest extends OpMode {
-    DcMotor left_back;
+    DcMotor left_back, shooter;
 
     @Override
     public void init() {
         left_back = hardwareMap.dcMotor.get("left_back");
+        shooter = hardwareMap.dcMotor.get("shooter");
         while(!initializeEncoder(left_back)) {}
+        while(!initializeEncoder(shooter)) {}
+        shooter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        shooter.setTargetPosition(-1500);
+        shooter.setPower(-0.4f);
     }
 
     private static boolean initializeEncoder(DcMotor m) {

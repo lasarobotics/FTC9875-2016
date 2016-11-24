@@ -11,5 +11,6 @@
 // Include common definitions from above.
 apply from: '../build.common.gradle'
 dependencies {
+    compile files('C:/Users/Russell/AndroidStudioProjects/FTC9875-2016/libs/rhino-1.7.7.1.jar')
     compile project(':ftc-nav')
 }

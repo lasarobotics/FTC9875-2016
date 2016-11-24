@@ -37,7 +37,7 @@ public class MecanumTestLib extends OpMode {
     private IntakeState intake_state = IntakeState.STOP;
     private ShooterState shooter_state = ShooterState.RESETTING;
     private static final int DAMPEN_CONSTANT = 4;
-    private static final int SHOOTER_FIRE_POSITION = -1550;
+    private static final int SHOOTER_FIRE_POSITION = -1650;
     private static final int SHOOTER_DESIRED_POSITION = -1350;
 
     public void init() {
@@ -127,6 +127,7 @@ public class MecanumTestLib extends OpMode {
         setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         intake = hardwareMap.dcMotor.get("intake");
         shooter = hardwareMap.dcMotor.get("shooter");
+        shooter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         arm = hardwareMap.crservo.get("button_presser");
     }
 
@@ -229,10 +230,26 @@ public class MecanumTestLib extends OpMode {
             }
         }
 
+        boolean dpad_down_controls_shooter = false;
+        if(inputHandler.pressed("manual_shooter")) {
+            dpad_down_controls_shooter = true;
+            shooter.setPower(-1);
+        }
+        if(inputHandler.justReleased("manual_shooter")) {
+            dpad_down_controls_shooter = true;
+            shooter.setPower(0);
+        }
+        if(inputHandler.justPressed("manual_shooter")) {
+            dpad_down_controls_shooter = true;
+            shooter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        }
+
+        if(!dpad_down_controls_shooter)
+            //TODO: redo this crap to use modulo
         switch(shooter_state) {
             case EXTENDED:
+                shooter.setPower(0);
                 if(shooterControlPressed()) {
-                    shooter.setPower(-0.4f);
                     shooter_state = ShooterState.TRANSITIONING;
                 } else {
                     //shooter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
@@ -242,26 +259,30 @@ public class MecanumTestLib extends OpMode {
                 if(shooterControlPressed()) {
                     shooter_state = ShooterState.FIRING;
                 } else {
-                    //attempt to normalize shooter position
-                    if(shooter.getCurrentPosition() < SHOOTER_DESIRED_POSITION) {
-                        //shooter.setPower(0.1f);
-                        shooter.setPower(0f);
-                    } else if(shooter.getCurrentPosition() > SHOOTER_DESIRED_POSITION) {
-                        shooter.setPower(-0.2f);
-                    } else {
-                        shooter.setPower(0f);
+                    shooter.setTargetPosition(SHOOTER_DESIRED_POSITION);
+                    if(shooter.getMode() != DcMotor.RunMode.RUN_TO_POSITION) {
+                        shooter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
                     }
                 }
                 break;
             case TRANSITIONING:
-                if(shooter.getCurrentPosition() < SHOOTER_DESIRED_POSITION) {
-                    shooter.setPower(0f);
+                if(shooter.getCurrentPosition() > SHOOTER_DESIRED_POSITION) {
+                    shooter.setTargetPosition(SHOOTER_DESIRED_POSITION);
+                    if (shooter.getMode() != DcMotor.RunMode.RUN_TO_POSITION) {
+                        shooter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                    }
+                    shooter.setPower(-1);
+                } else {
                     shooter_state = ShooterState.RECOILED;
                 }
                 break;
             case FIRING:
                 if(shooter.getCurrentPosition() > SHOOTER_FIRE_POSITION) {
-                    shooter.setPower(-0.4f);
+                    if(shooter.getMode() != DcMotor.RunMode.RUN_TO_POSITION) {
+                        shooter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                    }
+                    shooter.setTargetPosition(SHOOTER_FIRE_POSITION);
+                    shooter.setPower(-1);
                 } else {
                     shooter_state = ShooterState.RESETTING;
                 }
@@ -300,12 +321,6 @@ public class MecanumTestLib extends OpMode {
             case OUTTAKE:
                 intake.setPower(-1);
                 break;
-        }
-        if(inputHandler.pressed("manual_shooter")) {
-            shooter.setPower(-1);
-        }
-        if(inputHandler.justReleased("manual_shooter")) {
-            shooter.setPower(0);
         }
         //shooter.setPower(gamepad1.dpad_down ? -1 : 0);
     }
