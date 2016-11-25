@@ -200,6 +200,7 @@ public class JavascriptServer extends OpMode {
 
                 scope = cx.initStandardObjects();
                 ScriptableObject.putProperty(scope, "gamepad1", Context.javaToJS(gamepad1, scope));
+                ScriptableObject.putProperty(scope, "gamepad2", Context.javaToJS(gamepad2, scope));
                 ScriptableObject.putProperty(scope, "hardwareMap", Context.javaToJS(hardwareMap, scope));
             }
         }
@@ -313,17 +314,17 @@ public class JavascriptServer extends OpMode {
                                 isLooping.setValue(true);
                                 break;
                             case STOP:
+                                isLooping.setValue(false);
                                 if(!callFunction("stop")) {
                                     addToQueuedErrors("Unable to call \"stop\".");
                                 }
-                                isLooping.setValue(false);
                                 break;
                             case INIT:
+                                isLooping.setValue(false);
                                 if(!callFunction("init")) {
                                     addToQueuedErrors("Unable to call \"init\".");
                                     System.out.println(queuedErrors);
                                 }
-                                isLooping.setValue(false);
                                 break;
                         }
 
