@@ -14,6 +14,11 @@ public class MecanumTestLib extends OpMode {
     private enum ArmState {
         STOP, IN, OUT;
     }
+    private enum LiftState {
+        STOP,
+        IN,
+        OUT
+    }
     private enum IntakeState {
         STOP, INTAKE, OUTTAKE;
     }
@@ -25,9 +30,10 @@ public class MecanumTestLib extends OpMode {
         FIRING //firing
     }
 
-    DcMotor left_back, left_front, right_back, right_front, intake, shooter;
+    DcMotor left_back, left_front, right_back, right_front, intake, shooter, lift, lift_two;
     CRServo arm;
     private InputHandler inputHandler = new InputHandler();
+    private LiftState lift_state = LiftState.STOP;
     private ArmState arm_state = ArmState.STOP;
     private float tol = 0.05f;
     private float trigger_tol = 0.25f;
@@ -55,7 +61,8 @@ public class MecanumTestLib extends OpMode {
         inputHandler.registerButtons(
                 "reverse_direction",
                 "shooter_control",
-                "manual_shooter"
+                "manual_shooter",
+                "lift_power"
         );
     }
 
@@ -129,6 +136,8 @@ public class MecanumTestLib extends OpMode {
         shooter = hardwareMap.dcMotor.get("shooter");
         shooter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         arm = hardwareMap.crservo.get("button_presser");
+        lift = hardwareMap.dcMotor.get("lift");
+        lift_two = hardwareMap.dcMotor.get("lift_two");
     }
 
     //Sets the mode for all encoder-enabled motors
@@ -154,6 +163,7 @@ public class MecanumTestLib extends OpMode {
         inputHandler.updateState("reverse_direction", gamepad1.a);
         inputHandler.updateState("shooter_control", gamepad1.dpad_up);
         inputHandler.updateState("manual_shooter", gamepad1.dpad_down);
+        inputHandler.updateState("lift_power", gamepad1.y);
 
         float left_x  =  damp(tol, gamepad1.left_stick_x);
         float left_y  =  damp(tol, gamepad1.left_stick_y);
@@ -209,6 +219,8 @@ public class MecanumTestLib extends OpMode {
                 right_trigger_pressed = true;
             }
         }
+
+
 
         if(right_bumper_pressed) {
             if(!gamepad1.right_bumper) {
@@ -296,6 +308,35 @@ public class MecanumTestLib extends OpMode {
                     shooter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
                     shooter_state = ShooterState.EXTENDED;
                 }
+                break;
+        }
+
+        if(inputHandler.justPressed("lift_power")) {
+            switch(lift_state) {
+                case STOP:
+                    lift_state = LiftState.IN;
+                    break;
+                case IN:
+                    lift_state = LiftState.OUT;
+                    break;
+                case OUT:
+                    lift_state = LiftState.STOP;
+                    break;
+            }
+        }
+
+        switch(lift_state) {
+            case STOP:
+                lift.setPower(0);
+                lift_two.setPower(0);
+                break;
+            case IN:
+                lift.setPower(1);
+                lift_two.setPower(1);
+                break;
+            case OUT:
+                lift.setPower(-1);
+                lift_two.setPower(-1);
                 break;
         }
 
