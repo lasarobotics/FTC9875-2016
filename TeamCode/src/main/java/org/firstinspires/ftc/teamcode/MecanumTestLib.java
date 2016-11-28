@@ -43,6 +43,7 @@ public class MecanumTestLib extends OpMode {
     private IntakeState intake_state = IntakeState.STOP;
     private ShooterState shooter_state = ShooterState.RESETTING;
     private static final int DAMPEN_CONSTANT = 4;
+    //1440 ticks per rotation
     private static final int SHOOTER_FIRE_POSITION = -1650;
     private static final int SHOOTER_DESIRED_POSITION = -1350;
 
