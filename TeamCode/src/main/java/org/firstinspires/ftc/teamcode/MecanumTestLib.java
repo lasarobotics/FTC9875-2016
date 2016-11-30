@@ -16,8 +16,7 @@ public class MecanumTestLib extends OpMode {
     }
     private enum LiftState {
         STOP,
-        IN,
-        OUT
+        IN
     }
     private enum IntakeState {
         STOP, INTAKE, OUTTAKE;
@@ -31,7 +30,7 @@ public class MecanumTestLib extends OpMode {
     }
 
     DcMotor left_back, left_front, right_back, right_front, intake, shooter, lift, lift_two;
-    CRServo arm;
+    CRServo arm, latch;
     private InputHandler inputHandler = new InputHandler();
     private LiftState lift_state = LiftState.STOP;
     private ArmState arm_state = ArmState.STOP;
@@ -63,7 +62,8 @@ public class MecanumTestLib extends OpMode {
                 "reverse_direction",
                 "shooter_control",
                 "manual_shooter",
-                "lift_power"
+                "lift_power",
+                "latch"
         );
     }
 
@@ -137,6 +137,7 @@ public class MecanumTestLib extends OpMode {
         shooter = hardwareMap.dcMotor.get("shooter");
         shooter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         arm = hardwareMap.crservo.get("button_presser");
+        latch = hardwareMap.crservo.get("latch");
         lift = hardwareMap.dcMotor.get("lift");
         lift_two = hardwareMap.dcMotor.get("lift_two");
     }
@@ -165,6 +166,7 @@ public class MecanumTestLib extends OpMode {
         inputHandler.updateState("shooter_control", gamepad1.dpad_up);
         inputHandler.updateState("manual_shooter", gamepad1.dpad_down);
         inputHandler.updateState("lift_power", gamepad1.y);
+        inputHandler.updateState("latch", gamepad1.left_bumper);
 
         float left_x  =  damp(tol, gamepad1.left_stick_x);
         float left_y  =  damp(tol, gamepad1.left_stick_y);
@@ -257,6 +259,16 @@ public class MecanumTestLib extends OpMode {
             shooter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         }
 
+        if(inputHandler.pressed("latch")) {
+            latch.setPower(-1);
+        } else {
+            latch.setPower(0);
+        }
+
+        if(gamepad1.back) {
+            latch.setPower(1);
+        }
+
         if(!dpad_down_controls_shooter)
             //TODO: redo this crap to use modulo
         switch(shooter_state) {
@@ -312,33 +324,31 @@ public class MecanumTestLib extends OpMode {
                 break;
         }
 
-        if(inputHandler.justPressed("lift_power")) {
-            switch(lift_state) {
+        if(gamepad1.x) {
+            lift.setPower(-1); //pull back on lift
+            lift_two.setPower(-1);
+        } else {
+            if (inputHandler.justPressed("lift_power")) {
+                switch (lift_state) {
+                    case STOP:
+                        lift_state = LiftState.IN;
+                        break;
+                    case IN:
+                        lift_state = LiftState.STOP;
+                        break;
+                }
+            }
+
+            switch (lift_state) {
                 case STOP:
-                    lift_state = LiftState.IN;
+                    lift.setPower(0);
+                    lift_two.setPower(0);
                     break;
                 case IN:
-                    lift_state = LiftState.OUT;
-                    break;
-                case OUT:
-                    lift_state = LiftState.STOP;
+                    lift.setPower(1);
+                    lift_two.setPower(1);
                     break;
             }
-        }
-
-        switch(lift_state) {
-            case STOP:
-                lift.setPower(0);
-                lift_two.setPower(0);
-                break;
-            case IN:
-                lift.setPower(1);
-                lift_two.setPower(1);
-                break;
-            case OUT:
-                lift.setPower(-1);
-                lift_two.setPower(-1);
-                break;
         }
 
         switch(arm_state) {
@@ -375,6 +385,7 @@ public class MecanumTestLib extends OpMode {
         intake.setPower(0);
         shooter.setPower(0);
         arm.setPower(0);
+        latch.setPower(0);
     }
 
     private float damp(float tol, float val) {

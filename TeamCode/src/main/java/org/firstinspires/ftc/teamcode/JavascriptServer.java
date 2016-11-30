@@ -13,6 +13,7 @@ import org.mozilla.javascript.RhinoException;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -36,6 +37,7 @@ public class JavascriptServer extends OpMode {
         START,
         STOP,
         INIT,
+        STORE,
         NONE
     }
     private enum DataOutputType {
@@ -259,7 +261,7 @@ public class JavascriptServer extends OpMode {
                                     @Override
                                     public Object call() {
                                         try {
-                                            script.evaluateString(fs1, "<cmd>");
+                                            script.evaluateString(fs1, "<script>");
                                         } catch(RhinoException re) {
                                             try {
                                                 writeErrorToClient(re);
@@ -280,7 +282,7 @@ public class JavascriptServer extends OpMode {
                                     public Object call() {
                                         try {
                                             String strOut = String.valueOf(
-                                                    script.evaluateString(fs2, "<script>"));
+                                                    script.evaluateString(fs2, "<cmd>"));
                                             try {
                                                 writeStringToClient(DataOutputType.LINE_OUTPUT, strOut);
                                             } catch(IOException ioe) {
@@ -324,6 +326,32 @@ public class JavascriptServer extends OpMode {
                                 if(!callFunction("init")) {
                                     addToQueuedErrors("Unable to call \"init\".");
                                     System.out.println(queuedErrors);
+                                }
+                                break;
+                            case STORE:
+                                int index = inFromClient.readInt();
+                                String fullName;
+                                switch(index) {
+                                    case 1:
+                                        fullName = "one.js";
+                                        break;
+                                    case 2:
+                                        fullName = "two.js";
+                                        break;
+                                    case 3:
+                                        fullName = "three.js";
+                                        break;
+                                    default:
+                                        fullName = null;
+                                        break;
+                                }
+                                if(fullName == null) {
+                                    addToQueuedErrors("Index: " + index + " does not exist.");
+                                } else {
+                                    PrintWriter out = new PrintWriter(fullName);
+                                    String code = inFromClient.readUTF();
+                                    out.write(code);
+                                    out.close();
                                 }
                                 break;
                         }
