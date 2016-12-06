@@ -6,6 +6,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.I2cAddr;
 
 import java.util.HashMap;
 
@@ -362,7 +363,7 @@ public class MecanumTestLib extends OpMode {
                 arm.setPower(-1);
                 break;
         }
-
+        //hardwareMap.colorSensor.get("").setI2cAddress(new I2cAddr());
         switch (intake_state) {
             case STOP:
                 intake.setPower(0);
