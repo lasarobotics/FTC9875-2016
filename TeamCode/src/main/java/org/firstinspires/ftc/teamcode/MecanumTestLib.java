@@ -64,7 +64,8 @@ public class MecanumTestLib extends OpMode {
                 "shooter_control",
                 "manual_shooter",
                 "lift_power",
-                "latch"
+                "latch",
+                "slow"
         );
     }
 
@@ -168,6 +169,7 @@ public class MecanumTestLib extends OpMode {
         inputHandler.updateState("manual_shooter", gamepad1.dpad_down);
         inputHandler.updateState("lift_power", gamepad1.y);
         inputHandler.updateState("latch", gamepad1.left_bumper);
+        inputHandler.updateState("slow", gamepad1.b);
 
         float left_x  =  damp(tol, gamepad1.left_stick_x);
         float left_y  =  damp(tol, gamepad1.left_stick_y);
@@ -176,7 +178,7 @@ public class MecanumTestLib extends OpMode {
             left_y  *= -1;
             right_x *= -1;
         }
-        if(gamepad1.b) {
+        if(inputHandler.getToggled("slow")) {
             //fine-grained control, slower movement
             left_x  /= DAMPEN_CONSTANT;
             left_y  /= DAMPEN_CONSTANT;
@@ -187,8 +189,19 @@ public class MecanumTestLib extends OpMode {
             left_y  = 0;
             right_x = 0;
         }
-        Mecanum.arcade(left_x, left_y, right_x, left_front, right_front, left_back, right_back);
+        //Mecanum.arcade(left_x, left_y, right_x, left_front, right_front, left_back, right_back);
         arm_state = gamepad1.dpad_left ? ArmState.IN : gamepad1.dpad_right ? ArmState.OUT : ArmState.STOP;
+
+        double x = damp(tol, right_x);
+        /*if(damp(0.125f, right_x) > 0) {
+            motor(1, -1, 1, -1);
+        } else if(damp(0.125f, right_x) < 0) {
+            motor(-1, 1, -1, 1);*/
+        if(x != 0) {
+            motor(x, -x, x, -x);
+        } else {
+            Mecanum.arcade(left_x, 0, -left_y, left_front, right_front, left_back, right_back);
+        }
 
         if(left_trigger_pressed) {
             if(gamepad1.left_trigger <= trigger_tol) {
@@ -376,6 +389,13 @@ public class MecanumTestLib extends OpMode {
                 break;
         }
         //shooter.setPower(gamepad1.dpad_down ? -1 : 0);
+    }
+
+    public void motor(double lb, double lf, double rb, double rf) {
+        left_back.setPower(lb);
+        left_front.setPower(lf);
+        right_back.setPower(rb);
+        right_front.setPower(rf);
     }
 
     public void stop() {
