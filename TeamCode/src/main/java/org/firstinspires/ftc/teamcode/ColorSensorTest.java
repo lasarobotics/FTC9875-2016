@@ -17,9 +17,11 @@ public class ColorSensorTest extends OpMode {
     @Override
     public void init() {
         top = hardwareMap.colorSensor.get("colors");
-        bottom = hardwareMap.colorSensor.get("bottom");
-        top.setI2cAddress(I2cAddr.create8bit(0x1c));
-        bottom.setI2cAddress(I2cAddr.create8bit(0x2c));
+        //bottom = hardwareMap.colorSensor.get("bottom");
+        //bottom.setI2cAddress(I2cAddr.create8bit(0x1c));
+        top.setI2cAddress(I2cAddr.create8bit(0x6c));
+        top.enableLed(true);
+        //bottom.enableLed(true);
     }
 
     @Override
@@ -30,8 +32,8 @@ public class ColorSensorTest extends OpMode {
     @Override
     public void loop() {
         telemetry.addData("Top", top.red());
-        telemetry.addData("Bottom", bottom.red());
-        if(counter / 5000 % 3 == 0) {
+        //telemetry.addData("Bottom", bottom.red());
+        /*if(counter / 5000 % 3 == 0) {
             top.enableLed(true);
             bottom.enableLed(false);
         } else if(counter / 5000 % 3 == 1) {
@@ -41,5 +43,6 @@ public class ColorSensorTest extends OpMode {
             top.enableLed(true);
             bottom.enableLed(true);
         }
+        counter++;*/
     }
 }
