@@ -4,6 +4,8 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 
+import org.firstinspires.ftc.teamcode.javascript.Constants;
+import org.firstinspires.ftc.teamcode.javascript.ThreadSafeData;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.ScriptableObject;
 import org.mozilla.javascript.EcmaError;
@@ -42,6 +44,8 @@ public class JavascriptServer extends OpMode {
         LINE_OUTPUT,
         ERROR,
         SINGLE_ERROR,
+        PRINT,
+        INFO,
         NONE
     }
     private DataType[] dataTypeValues = DataType.values();
@@ -59,28 +63,10 @@ public class JavascriptServer extends OpMode {
         System.out.println(s);
     }
 
-    private class ThreadSafeData<E> {
-        private final Object lock = new Object();
-        private volatile E value;
-
-        public void setValue(E value) {
-            synchronized(lock) {
-                this.value = value;
-            }
-        }
-
-        public E getValue() {
-            synchronized(lock) {
-                return value;
-            }
-        }
-    }
-
     private static volatile Thread serverThread;
     private static volatile Thread scriptThread;
     private static volatile ServerThread serverThreadObj;
     private static volatile ScriptThread scriptThreadObj;
-    private static final double VERSION_NUMBER = 1.2;
     private static final Object lock = new Object();
     private ThreadSafeData<Boolean> isLooping = new ThreadSafeData<>();
 
@@ -202,6 +188,7 @@ public class JavascriptServer extends OpMode {
                 ScriptableObject.putProperty(scope, "gamepad1", Context.javaToJS(gamepad1, scope));
                 ScriptableObject.putProperty(scope, "gamepad2", Context.javaToJS(gamepad2, scope));
                 ScriptableObject.putProperty(scope, "hardwareMap", Context.javaToJS(hardwareMap, scope));
+                ScriptableObject.putProperty(scope, "server", Context.javaToJS(new ClientCodeUtilities(), scope));
             }
         }
 
@@ -211,15 +198,28 @@ public class JavascriptServer extends OpMode {
         }
     }
 
+    public class ClientCodeUtilities {
+        public void print(String msg) {
+            try {
+                JavascriptServer.this.serverThreadObj.writeStringToClient(DataOutputType.PRINT, msg);
+                Thread.sleep(10); //to not spam the server
+            } catch(IOException ioe) {
+                log(ioe.getMessage());
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     private class ServerThread implements Runnable {
         private ServerSocket socket;
         private Socket clientSockets;
         private DataInputStream inFromClient; //no other threads should ever touch this
         private DataOutputStream outToClient; //ditto above
         private final Object socketLock = new Object();
-        private ArrayList<String> queuedErrors = new ArrayList<>();
-        private final Object queuedErrorsLock = new Object();
+        private final Object writeLock = new Object();
         private ScriptThread script;
+        private double clientVersion;
 
         public ServerThread(ScriptThread script) {
             this.script = script;
@@ -230,7 +230,13 @@ public class JavascriptServer extends OpMode {
             while(!Thread.currentThread().isInterrupted()) {
                 try {
                     createServer();
-                    outToClient.writeDouble(VERSION_NUMBER); //handshake
+                    synchronized(writeLock) {
+                        outToClient.writeDouble(Constants.VERSION_NUMBER); //handshake
+                    }
+                    if(Constants.VERSION_NUMBER >= 1.41) {
+                        //expect double from client
+                        clientVersion = inFromClient.readDouble();
+                    }
                     while(!Thread.currentThread().isInterrupted()) {
                         //server loop
                         DataType type = intToDataType(inFromClient.readInt());
@@ -247,7 +253,7 @@ public class JavascriptServer extends OpMode {
                                 DcMotor motor = hardwareMap.dcMotor.get(bufferStr);
                                 if(motor == null) {
                                     log("Motor not found: " + bufferStr);
-                                    writeStringToClient(DataOutputType.SINGLE_ERROR, "Motor not found: " + bufferStr);
+                                    writeErrorString("Motor not found: " + bufferStr);
                                 } else {
                                     motor.setPower(power);
                                 }
@@ -271,6 +277,7 @@ public class JavascriptServer extends OpMode {
                                         return null;
                                     }
                                 });
+                                writeInfoToClient("Running full script.");
                                 break;
                             case ONE_LINE:
                                 bufferStr = inFromClient.readUTF();
@@ -306,34 +313,33 @@ public class JavascriptServer extends OpMode {
                                         return null;
                                     }
                                 });
+                                writeInfoToClient("Context cleared.");
                                 break;
                             case START:
                                 if(!callFunction("start")) {
-                                    addToQueuedErrors("Unable to call \"start\".");
+                                    writeErrorString("Unable to call \"start\".");
+                                } else {
+                                    isLooping.setValue(true);
+                                    writeInfoToClient("Started.");
                                 }
-                                isLooping.setValue(true);
                                 break;
                             case STOP:
                                 isLooping.setValue(false);
                                 if(!callFunction("stop")) {
-                                    addToQueuedErrors("Unable to call \"stop\".");
+                                    writeErrorString("Unable to call \"stop\".");
+                                } else {
+                                    writeInfoToClient("Stopped.");
                                 }
                                 break;
                             case INIT:
                                 isLooping.setValue(false);
                                 if(!callFunction("init")) {
-                                    addToQueuedErrors("Unable to call \"init\".");
-                                    System.out.println(queuedErrors);
+                                    writeErrorString("Unable to call \"init\".");
+                                    //System.out.println(queuedErrors);
+                                } else {
+                                    writeInfoToClient("Initialized.");
                                 }
                                 break;
-                        }
-
-                        //check for any queued errors and write them
-                        synchronized(queuedErrorsLock) {
-                            for(String s : queuedErrors) {
-                                writeStringToClient(DataOutputType.SINGLE_ERROR, s);
-                            }
-                            queuedErrors.clear();
                         }
                     }
                 } catch(IOException ioe) {
@@ -344,28 +350,47 @@ public class JavascriptServer extends OpMode {
             }
         }
 
-        private void writeErrorToClient(RhinoException error) throws IOException {
-            outToClient.writeInt(DataOutputType.ERROR.ordinal());
-            outToClient.writeUTF(error.getMessage());
-            outToClient.writeUTF(error.getScriptStackTrace());
-            outToClient.writeInt(error.lineNumber());
-            outToClient.writeInt(error.columnNumber());
+        public void writeErrorString(String error) {
+            try {
+                writeStringToClient(DataOutputType.SINGLE_ERROR, error);
+            } catch(IOException ioe) {
+                log("Couldn't write error: " + ioe.getMessage());
+            }
         }
 
-        private void writeStringToClient(DataOutputType type, String str) throws IOException {
-            outToClient.writeInt(type.ordinal());
-            outToClient.writeUTF(str);
+        public void writeErrorToClient(RhinoException error) throws IOException {
+            synchronized(writeLock) {
+                outToClient.writeInt(DataOutputType.ERROR.ordinal());
+                outToClient.writeUTF(error.getMessage());
+                outToClient.writeUTF(error.getScriptStackTrace());
+                outToClient.writeInt(error.lineNumber());
+                outToClient.writeInt(error.columnNumber());
+            }
         }
 
-        public void addToQueuedErrors(String s) {
-            synchronized(queuedErrorsLock) {
-                queuedErrors.add(s);
+        public void writeInfoToClient(String info) throws IOException {
+            if(Constants.VERSION_NUMBER >= 1.41) {
+                writeStringToClient(DataOutputType.INFO, info);
+            } else {
+                log("Unable to log: " + info + " for reason: incompatible server version.");
+            }
+        }
+
+        public void writeStringToClient(DataOutputType type, String str) throws IOException {
+            synchronized(writeLock) {
+                outToClient.writeInt(type.ordinal());
+                outToClient.writeUTF(str);
             }
         }
 
         public void closeSocket() {
             synchronized(socketLock) {
                 if(socket != null && !socket.isClosed()) {
+                    try {
+                        writeInfoToClient("About to close socket.");
+                    } catch(IOException ioe) {
+                        //ignore, we're about to shut down anyway
+                    }
                     try {
                         socket.close();
                     } catch(IOException ioe2) {
@@ -382,7 +407,8 @@ public class JavascriptServer extends OpMode {
                         public Object call() {
                             return JavascriptServer.this.scriptThreadObj.callFunction(name);
                         }
-                    });
+                    }
+            );
             script.addTask(ft);
             try {
                 String err = (String)ft.get();
@@ -390,11 +416,11 @@ public class JavascriptServer extends OpMode {
                     //success
                     return true;
                 } else {
-                    addToQueuedErrors(err);
+                    writeErrorString(err);
                     return false;
                 }
             } catch(InterruptedException|ExecutionException ie) {
-                addToQueuedErrors(ie.getMessage());
+                writeErrorString(ie.getMessage());
                 return false;
             }
         }
@@ -430,7 +456,7 @@ public class JavascriptServer extends OpMode {
 
     private void smallDelay() {
         try {
-            Thread.sleep(100);
+            Thread.sleep(10);
         } catch(InterruptedException ie) {
             log("Interrupted.");
         }
@@ -442,6 +468,8 @@ public class JavascriptServer extends OpMode {
             if(!serverThreadObj.callFunction("loop")) {
                 System.out.println("Unable to loop!");
                 smallDelay();
+                isLooping.setValue(false);
+                serverThreadObj.callFunction("stop");
             }
         } else {
             smallDelay();

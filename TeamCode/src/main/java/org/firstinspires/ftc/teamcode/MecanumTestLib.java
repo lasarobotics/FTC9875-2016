@@ -46,6 +46,7 @@ public class MecanumTestLib extends OpMode {
     //1440 ticks per rotation
     private static final int SHOOTER_FIRE_POSITION = -1650;
     private static final int SHOOTER_DESIRED_POSITION = -1350;
+    private static final int LIFT_TWO_MULTIPLIER = 1;
 
     public void init() {
         initializeMotors(); //get motors
@@ -340,7 +341,7 @@ public class MecanumTestLib extends OpMode {
 
         if(gamepad1.x) {
             lift.setPower(-1); //pull back on lift
-            lift_two.setPower(-1);
+            lift_two.setPower(LIFT_TWO_MULTIPLIER * -1);
         } else {
             if (inputHandler.justPressed("lift_power")) {
                 switch (lift_state) {
@@ -360,7 +361,7 @@ public class MecanumTestLib extends OpMode {
                     break;
                 case IN:
                     lift.setPower(1);
-                    lift_two.setPower(1);
+                    lift_two.setPower(LIFT_TWO_MULTIPLIER * 1);
                     break;
             }
         }
