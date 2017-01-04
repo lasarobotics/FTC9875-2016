@@ -2,8 +2,12 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DistanceSensor;
+import com.qualcomm.robotcore.hardware.I2cDevice;
 
+import org.firstinspires.ftc.robotcontroller.external.samples.SensorMRRangeSensor;
 import org.firstinspires.ftc.teamcode.javascript.Constants;
 import org.firstinspires.ftc.teamcode.javascript.ThreadSafeData;
 import org.mozilla.javascript.Context;
@@ -46,6 +50,7 @@ public class JavascriptServer extends OpMode {
         SINGLE_ERROR,
         PRINT,
         INFO,
+        END,
         NONE
     }
     private DataType[] dataTypeValues = DataType.values();
@@ -383,11 +388,18 @@ public class JavascriptServer extends OpMode {
             }
         }
 
+        public void writeEndToClient() throws IOException {
+            synchronized(writeLock) {
+                outToClient.writeInt(DataOutputType.END.ordinal());
+            }
+        }
+
         public void closeSocket() {
             synchronized(socketLock) {
                 if(socket != null && !socket.isClosed()) {
                     try {
                         writeInfoToClient("About to close socket.");
+                        writeEndToClient();
                     } catch(IOException ioe) {
                         //ignore, we're about to shut down anyway
                     }
@@ -450,6 +462,7 @@ public class JavascriptServer extends OpMode {
 
     @Override
     public void stop() {
+        serverThreadObj.callFunction("stop");
         isLooping.setValue(false);
         deleteOtherThread();
     }

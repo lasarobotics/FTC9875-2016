@@ -5,5 +5,5 @@ package org.firstinspires.ftc.teamcode.javascript;
  */
 
 public class Constants {
-    public static final double VERSION_NUMBER = 1.41;
+    public static final double VERSION_NUMBER = 1.51;
 }
