@@ -11,8 +11,8 @@ import org.mozilla.javascript.ScriptableObject;
  * Created by Russell on 11/23/2016.
  */
 
-@Autonomous(name = "winterbreak", group = "test")
-public class WinterBreakAuto extends OpMode {
+@Autonomous(name = "wb-blue", group = "test")
+public class WinterBreakAutoBlue extends OpMode {
     private static Script scriptObj;
 
     private class Script {
@@ -23,19 +23,19 @@ public class WinterBreakAuto extends OpMode {
         private long threadId = -1;
 
         public String callFunction(String name) {
-            synchronized(scriptLock) {
-                if(scope == null) {
+            synchronized (scriptLock) {
+                if (scope == null) {
                     return "Null scope.";
                 }
                 Object obj = null;
                 try {
                     obj = scope.get(name, scope);
-                    Function fct = (Function)obj;
-                    if(fct == null) {
+                    Function fct = (Function) obj;
+                    if (fct == null) {
                         return "Function not found: " + name;
                     }
-                    fct.call(cx, scope, scope, new Object[] {});
-                } catch(ClassCastException cce) {
+                    fct.call(cx, scope, scope, new Object[]{});
+                } catch (ClassCastException cce) {
                     return "Function " + name + " is of type " + obj;
                 }
                 return null;
@@ -43,7 +43,7 @@ public class WinterBreakAuto extends OpMode {
         }
 
         public Object evaluateString(String str, String name) {
-            if(cx == null) {
+            if (cx == null) {
                 return null;
             }
             return cx.evaluateString(scope, str, name, 1, null);
@@ -51,8 +51,8 @@ public class WinterBreakAuto extends OpMode {
 
         //do not run me if a context already exists
         private void createContext() {
-            synchronized(scriptLock) {
-                if(inContext) {
+            synchronized (scriptLock) {
+                if (inContext) {
                     clearContext();
                 }
                 threadId = Thread.currentThread().getId();
@@ -69,8 +69,8 @@ public class WinterBreakAuto extends OpMode {
         }
 
         public void clearContext() {
-            if(!inContext) return;
-            if(Thread.currentThread().getId() != threadId) return; //not running on context thread
+            if (!inContext) return;
+            if (Thread.currentThread().getId() != threadId) return; //not running on context thread
             Context.exit();
             createContext();
             inContext = false;
@@ -85,26 +85,26 @@ public class WinterBreakAuto extends OpMode {
 
     @Override
     public void init() {
-        if(scriptObj == null) {
+        if (scriptObj == null) {
             scriptObj = new Script();
         }
         scriptObj.createContext();
         scriptObj.evaluateString(scriptLiteral, "<offline>");
-        if(scriptObj.callFunction("init") != null) {
+        if (scriptObj.callFunction("init") != null) {
             throw new RuntimeException("Unable to init");
         }
     }
 
     @Override
     public void start() {
-        if(scriptObj.callFunction("start") != null) {
+        if (scriptObj.callFunction("start") != null) {
             throw new RuntimeException("Unable to start");
         }
     }
 
     @Override
     public void stop() {
-        if(scriptObj.callFunction("stop") != null) {
+        if (scriptObj.callFunction("stop") != null) {
             throw new RuntimeException("Unable to stop");
         }
         scriptObj.clearContext();
@@ -113,7 +113,7 @@ public class WinterBreakAuto extends OpMode {
     private void smallDelay() {
         try {
             Thread.sleep(10);
-        } catch(InterruptedException ie) {
+        } catch (InterruptedException ie) {
             System.out.println("Interrupted.");
         }
     }
@@ -121,7 +121,7 @@ public class WinterBreakAuto extends OpMode {
     @Override
     public void loop() {
         String err = scriptObj.callFunction("loop");
-        if(err != null) {
+        if (err != null) {
             System.out.println("Unable to loop!");
             scriptObj.callFunction("stop");
             throw new RuntimeException("Unable to loop: " + err);
@@ -136,6 +136,7 @@ public class WinterBreakAuto extends OpMode {
             "var full_rotation = 1440;\n" +
             "var CENTIMETERS = Packages.org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit.CM;\n" +
             "var run_once_db = {};\n" +
+            "var red = false;\n" +
             "\n" +
             "var commands = [\n" +
             "\t/*rotate(-180), //test out motor ability to return to start\n" +
@@ -474,7 +475,8 @@ public class WinterBreakAuto extends OpMode {
             "}\n" +
             "\n" +
             "function rotate(angle) {\n" +
-            "\tvar turnAmount = ninety_degree_angle/90 * angle;\n" +
+            "        var coefficient = red ? 1 : -1;\n" +
+            "\tvar turnAmount = coefficient * ninety_degree_angle/90 * angle;\n" +
             "\treturn function() {\n" +
             "\t\treturn build_command(turnAmount, turnAmount, turnAmount, turnAmount);\n" +
             "\t};\n" +
