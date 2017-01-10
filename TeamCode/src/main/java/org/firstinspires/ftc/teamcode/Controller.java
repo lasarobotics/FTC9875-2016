@@ -13,7 +13,7 @@ public class Controller {
 
     // button handling
     public enum Button {
-        A, B, X, Y, DPAD_LEFT, DPAD_RIGHT, DPAD_DOWN, DPAD_UP, LEFT_BUMPER, RIGHT_BUMPER
+        A, B, X, Y, DPAD_LEFT, DPAD_RIGHT, DPAD_DOWN, DPAD_UP, LEFT_BUMPER, RIGHT_BUMPER, LEFT_TRIGGER, RIGHT_TRIGGER
     }
     private class ButtonState {
         public boolean pressed = false;
@@ -54,13 +54,13 @@ public class Controller {
         return damp(stickTol, g.left_stick_x);
     }
     public float left_stick_y() {
-        return damp(stickTol, g.left_stick_x);
+        return damp(stickTol, g.left_stick_y);
     }
     public float right_stick_x() {
-        return damp(stickTol, g.left_stick_x);
+        return damp(stickTol, g.right_stick_x);
     }
     public float right_stick_y() {
-        return damp(stickTol, g.left_stick_x);
+        return damp(stickTol, g.right_stick_y);
     }
 
     // stick buttons
@@ -146,6 +146,10 @@ public class Controller {
                 return left_bumper();
             case RIGHT_BUMPER:
                 return right_bumper();
+            case LEFT_TRIGGER:
+                return left_trigger() > 0;
+            case RIGHT_TRIGGER:
+                return right_trigger() > 0;
             default:
                 return false;
         }

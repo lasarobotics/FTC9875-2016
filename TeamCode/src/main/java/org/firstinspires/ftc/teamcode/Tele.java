@@ -17,6 +17,9 @@ public class Tele extends OpMode {
         logic.plug(new MecanumPlug());
         logic.plug(new LiftPlug());
         logic.plug(new ArmPlug());
+        logic.plug(new IntakePlug());
+        logic.plug(new ShooterPlug());
+        logic.plug(new BrakePlug());
 
         logic.init();
     }

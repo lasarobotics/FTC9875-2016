@@ -1,19 +1,13 @@
 package org.firstinspires.ftc.teamcode.plugs;
 
-import com.qualcomm.robotcore.hardware.*;
 import org.firstinspires.ftc.teamcode.*;
 
 public class MecanumPlug implements Plug {
     public void init(Robot robot) {
-        // prevent coasting
-        robot.left_back.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        robot.left_front.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        robot.right_back.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        robot.right_front.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
     }
     public void loop(Robot robot) {
         // strafe if the right trigger is being used, otherwise drive normally
-        if(robot.c1.right_stick_x() > 0)
+        if(Math.abs(robot.c1.right_stick_x()) > 0)
             strafe(robot);
         else
             drive(robot);
