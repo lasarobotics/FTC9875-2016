@@ -1,11 +1,15 @@
 package org.firstinspires.ftc.teamcode;
 
+import android.util.Log;
+
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 
-@Autonomous(name = "simpleautonomove", group = "test")
-public class SimpleAutoNoMove extends OpMode {
+@Autonomous(name = "simpleauto", group = "test")
+public class SimpleAuto extends OpMode {
     DcMotor left_back, left_front, right_back, right_front, intake, shooter;
     boolean timeSet = false;
     long time;
@@ -36,6 +40,12 @@ public class SimpleAutoNoMove extends OpMode {
             shooter.setPower(-1);
         } else if(elapsed < 10000) {
             shooter.setPower(0);
+        } else if(elapsed < 12500) {
+            int power = 1;
+            left_back.setPower(power);
+            right_back.setPower(-power);
+            left_front.setPower(power);
+            right_front.setPower(-power);
         } else {
             stop();
         }

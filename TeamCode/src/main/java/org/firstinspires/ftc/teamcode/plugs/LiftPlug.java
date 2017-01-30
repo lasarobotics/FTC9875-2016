@@ -12,12 +12,12 @@ public class LiftPlug implements Plug {
         if(robot.c1.x()) {
             // raise lift
             robot.lift_left.setPower(1);
-            robot.lift_right.setPower(-1);
+            robot.lift_right.setPower(1);
         } else {
             if(robot.c1.toggled(Button.Y)) {
                 // lower lift
                 robot.lift_left.setPower(-1);
-                robot.lift_right.setPower(1);
+                robot.lift_right.setPower(-1);
             } else {
                 // stop lift
                 robot.lift_left.setPower(0);

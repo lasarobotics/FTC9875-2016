@@ -7,9 +7,14 @@
 // the build definitions, you can place those customizations in this file, but
 // please think carefully as to whether such customizations are really necessary
 // before doing so.
-
-
 // Custom definitions may go here
-
 // Include common definitions from above.
 apply from: '../build.common.gradle'
+dependencies {
+    compile 'org.mozilla:rhino:1.7.7.1'
+    compile name: 'navx_ftc-debug', ext: 'aar'
+}
+
+android {
+    buildToolsVersion '25.0.0'
+}

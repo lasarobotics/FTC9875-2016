@@ -1,11 +1,17 @@
 package org.firstinspires.ftc.teamcode.plugs;
 
+
+import org.firstinspires.ftc.teamcode.Controller.*;
 import org.firstinspires.ftc.teamcode.*;
 
 public class MecanumPlug implements Plug {
+    double scale = 1;
+
     public void init(Robot robot) {
+        robot.c1.register(Button.B);
     }
     public void loop(Robot robot) {
+        scale = robot.c1.toggled(Button.B) ? 0.25 : 1;
         // strafe if the right trigger is being used, otherwise drive normally
         if(Math.abs(robot.c1.right_stick_x()) > 0)
             strafe(robot);
@@ -29,18 +35,18 @@ public class MecanumPlug implements Plug {
             r /= max;
         }
 
-        robot.left_back.setPower(l);
-        robot.left_front.setPower(l);
-        robot.right_back.setPower(r);
-        robot.right_front.setPower(r);
+        robot.left_back.setPower(scale * l);
+        robot.left_front.setPower(scale * l);
+        robot.right_back.setPower(scale * r);
+        robot.right_front.setPower(scale * r);
     }
     // strafe with right_x
     private void strafe(Robot robot) {
-        float x = robot.c1.right_stick_x();
+        float s = robot.c1.right_stick_x();
 
-        robot.left_back.setPower(x);
-        robot.left_front.setPower(-x);
-        robot.right_back.setPower(x);
-        robot.right_front.setPower(-x);
+        robot.left_back.setPower(scale * s);
+        robot.left_front.setPower(-scale * s);
+        robot.right_back.setPower(scale * s);
+        robot.right_front.setPower(-scale * s);
     }
 }
