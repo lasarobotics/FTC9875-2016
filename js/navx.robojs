@@ -9,14 +9,20 @@ var run_once_db = {};
 var BRICK_LENGTH_BRAKE = 2100;
 
 // for navX, in degrees
-var angle_tolerance = 5;
+var angle_tolerance = 1;
 
 var AHRS = Packages.com.kauailabs.navx.ftc.AHRS;
 var navx;
 
 var testspeed = 2100;
 var commands = [
-	navx_rot(90),
+	navx_rot(180),
+	sleep(1000),
+	navx_rot(-180),
+	sleep(1000),
+	navx_rot(180),
+	sleep(1000),
+	navx_rot(-180),
 ];
 
 /*
@@ -30,28 +36,42 @@ var commands = [
 
 function navx_rot(theta) {
 	return function() {
-		var targetYaw = (yaw() + theta) % 360;
+		var targetYaw = (navx.getYaw() + theta) % 360;
+		//server.print("begin yaw: " + navx.getYaw());
 		return function() {
-			var delta = angle_between(targetYaw, yaw());
-			forAllMotors(function(m) { m.setPower(delta / theta) });
+			var delta = angle_between(targetYaw, navx.getYaw());
+			
+			var min_power = 0;
+			var frac = Math.min(1, delta/theta);
+			var power = frac*(1-min_power)+min_power;
+			//server.print("frac(" + frac+")*(1-"+ min_power+")+"+min_power + " -> " + power);
+			//if(frac > 1) server.print("FRAC TOO HIGH - ABORT " + frac);
+			
 			var ret = Math.abs(delta) < angle_tolerance;
 			
-			if(ret) next();
+			if(ret) {
+				forAllMotors(function(m) { m.setPower(0); });
+				//server.print("endYaw: " + navx.getYaw());
+				server.print("diff: " + ((targetYaw - navx.getYaw())%360));
+				//server.print("RETT'd");
+				next();
+			} else {
+				forAllMotors(function(m) { m.setPower(power); });
+			}
 			return ret;
 		}
 	};
 }
 
-function yaw() {
-	return fix_angle(navx.getYaw());
-}
-
 function fix_angle(theta) {
-	theta = theta < 0 ? theta : 360 + theta;
+	return theta > 0 ? theta : 360 + theta;
 }
 
 function angle_between(theta, phi) {
-	return Math.min((theta - phi) % 180, (phi - theta) % 360);
+	//server.print("    angle_between called with theta: " + theta + " and phi " + phi);
+	theta = fix_angle(theta);
+	phi = fix_angle(phi);
+	return Math.min(Math.abs((theta - phi) % 360), Math.abs((phi - theta) % 360));
 }
 
 function button_presser(dist) {
@@ -751,5 +771,6 @@ function f(power) {
 		}
 	});
 }
+
 
 
