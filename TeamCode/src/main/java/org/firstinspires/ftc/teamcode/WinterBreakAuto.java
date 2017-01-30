@@ -67,7 +67,7 @@ public class WinterBreakAuto extends OpMode {
                 inContext = true;
             }
         }
-
+    
         public void clearContext() {
             if(!inContext) return;
             if(Thread.currentThread().getId() != threadId) return; //not running on context thread
