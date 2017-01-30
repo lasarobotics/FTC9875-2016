@@ -17,6 +17,7 @@ var navx;
 var testspeed = 2100;
 var commands = [
 	navx_rot(180),
+	exit(),
 	sleep(1000),
 	navx_rot(-180),
 	sleep(1000),
@@ -42,7 +43,9 @@ function navx_rot(theta) {
 			var delta = angle_between(targetYaw, navx.getYaw());
 			
 			var min_power = 0;
-			var frac = Math.min(1, delta/theta);
+			var ofrac = delta/theta;
+			server.print(delta + "/" + theta + " -> " + ofrac);
+			var frac = Math.max(Math.min(1, ofrac), 0.3);
 			var power = frac*(1-min_power)+min_power;
 			//server.print("frac(" + frac+")*(1-"+ min_power+")+"+min_power + " -> " + power);
 			//if(frac > 1) server.print("FRAC TOO HIGH - ABORT " + frac);
@@ -61,6 +64,10 @@ function navx_rot(theta) {
 			return ret;
 		}
 	};
+}
+
+function get_target_change(current, theta) {
+	var trial1 = current-theta;
 }
 
 function fix_angle(theta) {
@@ -771,6 +778,7 @@ function f(power) {
 		}
 	});
 }
+
 
 
 
