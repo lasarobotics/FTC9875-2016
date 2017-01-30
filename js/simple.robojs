@@ -1,0 +1,125 @@
+function* par(commands...) {
+	yield state => {
+		commands.forEach(cmd => cmd(state));
+	}
+}
+
+function* until(pred, cmd) {
+    let done = false;
+    while(!done) {
+        yield state => {
+            if(pred(state)) {
+                done = true;
+            } else {
+                cmd(state);
+            }
+        }
+    }
+}
+
+function* times(n, cmd) {
+    let i = 0;
+    yield* until(_ => i >= n, state => { cmd(state); i++ } );
+}
+
+function* once(cmd) {
+    yield* times(1, cmd);
+}
+
+function* getState() {
+    return (yield _ => {});
+}
+
+function* pos(name) {
+    let state = yield* getState();
+    return state.pos(name);
+}
+
+function* pow(name, power) {
+    yield state => state.pow(name, power);
+}
+
+function* motor(name, ticks) {
+    let initial = yield* pos(name);
+    yield* until(state => state.pos(name) - initial >= ticks,
+                 state => state.pow(name, 1));
+    yield* pos(name, 0);
+}
+
+function* forAllDriveMotors(f) {
+	let motorNames = ['left_back', 'left_front', 'right_back', 'right_front'];
+	let commands = motorNames.map(motorName => f(state.motors[motorName]));
+	yield* par(commands);
+}
+
+function* forward(ticks) {
+	yield* par([
+		yield* pow('left_back', ticks),
+		yield* pow('left_front', ticks),
+		yield* pow('right_back', -ticks),
+		yield* pow('right_front', -ticks),
+	]);
+}
+
+function* rotate(deg) {
+	let ticks360 = 6600;
+	let ticks = deg / 360 * ticks360;
+	yield* pow('left_back', ticks);
+	yield* pow('left_front', ticks);
+	yield* pow('right_back', ticks);
+	yield* pow('right_front', ticks);
+}
+
+function* sleep(ms) {
+	let start = new Date();
+	yield* until(_ => new Date() - start >= ms, _ => {});
+}
+
+function* reset_motors() {
+	yield* forAllDriveMotors(motor => {
+		yield _ => motor.setMode(hardware.DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+		yield* until(_ => {
+			return motor.getCurrentPosition() == 0;
+		}, _ => ());
+	});
+}
+
+let state = new (function() {
+    this.motors = {};
+    this.pos = name => this.motors[name].getCurrentPosition();
+    this.pow = (name, power) => this.motors[name].setPower(power);
+});
+
+function init() {
+    for(motorName of ['left_back', 'left_front', 'right_back', 'right_front', 'shooter']) {
+        state.motors[motorName] = hardwareMap.dcMotor.get(motorName);
+    }
+    for(servoName of ['button_presser']) {
+        state.motors[servoName] = hardwareMap.crServo.get(servoName);
+    }
+}
+
+function run(program) {
+    while(true) {
+        let next = program.next(state);
+        if(next.done) {
+            break;
+        } else {
+            next.value(state);
+        }
+    }
+}
+
+function* mainProgram() {
+    yield* forward(1600);
+    yield* sleep(300);
+    yield* rotate(90);
+    yield* sleep(300);
+    yield* drive(5300);
+    yield* sleep(300);
+    yield* rotate(-90);
+}
+
+function loop() {
+    run(mainProgram());
+}
