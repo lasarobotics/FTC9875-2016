@@ -16,8 +16,28 @@ var navx;
 
 var testspeed = 2100;
 var commands = [
-	navx_rot(180),
+	nice_rotation(90),
+	sleep(500),
+	drive(2000),
+	sleep(500),
+	nice_rotation(90),
+	sleep(500),
+	drive(2000),
+	sleep(500),
+	nice_rotation(90),
+	sleep(500),
+	drive(2000),
+	sleep(500),
+	nice_rotation(90),
+	sleep(500),
+	drive(2000),
+	sleep(500),
+	nice_rotation(90),
+	sleep(500),
+	drive(2000),
+	sleep(500),
 	exit(),
+	navx_rot(180),
 	sleep(1000),
 	navx_rot(-180),
 	sleep(1000),
@@ -35,6 +55,172 @@ var commands = [
 
 */
 
+//--------------------------
+
+function closeInProximity(theta0, theta1, dist) {
+	var diff = Math.abs((theta0 - theta1)) % 360;
+	if(diff < 0) {
+		diff += 360;
+	}
+	if(diff <= dist) return true;
+	diff = -diff;
+	diff += 360;
+	if(diff <= dist) return true;
+	return false;
+}
+
+function getCircleStuff(theta0, theta1) {
+	var dt0 = theta0 - theta1;
+	var dt1 = -dt0;
+	dt0 %= 360;
+	dt1 %= 360;
+
+	var flip0 = false;
+	var flip1 = false;
+	if(dt0 < 0) {
+		dt0 += 360;
+		flip0 = true;
+	}
+	if(dt1 < 0) {
+		dt1 += 360;
+		flip1 = true;
+	}
+
+	if(dt0 < dt1) {
+		var end = (theta0 - dt0)%360;
+		if(end < 0) {
+			end += 360;
+		}
+		return {
+			orientation: !flip0 && !(theta0 > theta1),
+			dist: dt0
+		};
+	} else {
+		var end = (theta0 - dt1)%360;
+		if(end < 0) {
+			end += 360;
+		}
+		return {
+			orientation: ((theta0 < theta1) ^ flip1) == 1,
+			dist: dt1
+		};
+	}
+}
+
+function nice_rotation(theta) {
+	var continuousRoundsCompleted = 0;
+	return function() {
+		server.print("Running nice rotation");
+		set_run_using_encoder();
+		var target = (fix_angle(navx.getYaw())+theta)%360;
+		var whereToGoOriginal = getCircleStuff(fix_angle(navx.getYaw()), target);
+		server.print("Where to go original: " + JSON.stringify(whereToGoOriginal));
+		return function() {
+			var whereToGo = getCircleStuff(fix_angle(navx.getYaw()), target);
+
+			var completedFrac = (Math.abs(fix_angle(navx.getYaw()) - target)%360)/whereToGoOriginal.dist;
+			//server.print(completedFrac);
+			var power = Math.max(0.01, Math.min(completedFrac, 1));
+
+			var left = (target - fix_angle(navx.getYaw()))%360;
+			//server.print((Math.round(left*100)/100) + " " + (Math.round(100*completedFrac)/100));
+
+			forAllMotors(function(m) {m.setPower(whereToGo.orientation ? power : -power);});
+
+			var angleTolerance = 0.5;
+			if(closeInProximity(fix_angle(navx.getYaw()), target, angleTolerance)) {
+				++continuousRoundsCompleted;
+				server.print(continuousRoundsCompleted);
+				if(continuousRoundsCompleted > 10) {
+					server.print("theta: " + fix_angle(navx.getYaw()) + " target: " + target + " angleTolerance: " + angleTolerance);
+					forAllMotors(function(m) {m.setPower(0);});
+					next();
+					return true;
+				}
+			} else {
+				continuousRoundsCompleted = 0;
+			}
+			return false;
+		};
+	};
+}
+
+function drive_slow(ticks) {
+	return function() {
+		set_run_using_encoder();
+		var ticks = left_back.getCurrentPosition();
+		
+	};
+}
+
+function drive_slow(ticks, run) {
+	return function() {
+		return build_command_slow(ticks, ticks, -ticks, -ticks, run);
+	};
+}
+
+function build_command_slow(lb, lf, rb, rf, zero) {
+	if(typeof zero === 'undefined' || zero) {
+		zero_motors();
+	}
+	forAllMotors(function(motor) {
+		motor.setMode(hardware.DcMotor.RunMode.RUN_TO_POSITION);
+	});
+	var lbc = left_back.getCurrentPosition();
+	var lfc = left_front.getCurrentPosition();
+	var rbc = right_back.getCurrentPosition();
+	var rfc = right_front.getCurrentPosition();
+	left_back.setTargetPosition(lb + lbc);
+	left_front.setTargetPosition(lf + lfc);
+	right_back.setTargetPosition(rb + rbc);
+	right_front.setTargetPosition(rf + rfc);
+	var power = 0.5;
+	left_back.setPower(lb > 0 ? power : -power);
+	left_front.setPower(lf > 0 ? power : -power);
+	right_back.setPower(rb > 0 ? power : -power);
+	right_front.setPower(rf > 0 ? power : -power);
+
+	var lba = Math.abs(lb);
+	var lfa = Math.abs(lf);
+	var rba = Math.abs(rb);
+	var rfa = Math.abs(rf);
+	return function() {
+		var lbd = Math.abs(left_back.getCurrentPosition() - lbc);
+		var lfd = Math.abs(left_front.getCurrentPosition() - lfc);
+		var rbd = Math.abs(right_back.getCurrentPosition() - rbc);
+		var rfd = Math.abs(right_front.getCurrentPosition() - rfc);
+
+		var lbp = Math.min(1, Math.abs(left_back.getCurrentPosition()-(lb+lbc))/lba);
+		var lfp = Math.min(1, Math.abs(left_front.getCurrentPosition()-(lf+lfc))/lfa);
+		var rbp = Math.min(1, Math.abs(right_back.getCurrentPosition()-(rb+rbc))/rba);
+		var rfp = Math.min(1, Math.abs(right_front.getCurrentPosition()-(rf+rfc))/rfa);
+		server.print("lbp: " + lbp + " lfp: " + lfp + " rbp: " + rbp + " rfp: " + rfp);
+		left_back.setPower(lb > 0 ? lbp : -lbp);
+		left_front.setPower(lf > 0 ? lfp : -lfp);
+		right_back.setPower(rb > 0 ? rbp : -rbp);
+		right_front.setPower(rf > 0 ? power : -power);
+		
+		var arr = [Math.abs(lbd - lba) < 10,
+			  Math.abs(lfd - lfa) < 10,
+			  Math.abs(rbd - rba) < 10,
+			  Math.abs(rfd - rfa) < 10];
+		var ctr = 0;
+		if(arr[0]) ctr++;
+		if(arr[1]) ctr++;
+		if(arr[2]) ctr++;
+		if(arr[3]) ctr++;
+
+		ret = ctr > 2; //greater than 2 wheels made it
+		if(ret) {
+			//server.print("left_back desired: " + (lb + lbc) + " current: " + left_back.getCurrentPosition());
+			next();
+		}
+		return ret;
+	};
+}
+
+//--------------------------
+
 function navx_rot(theta) {
 	return function() {
 		var targetYaw = (navx.getYaw() + theta) % 360;
@@ -43,9 +229,7 @@ function navx_rot(theta) {
 			var delta = angle_between(targetYaw, navx.getYaw());
 			
 			var min_power = 0;
-			var ofrac = delta/theta;
-			server.print(delta + "/" + theta + " -> " + ofrac);
-			var frac = Math.max(Math.min(1, ofrac), 0.3);
+			var frac = Math.min(1, delta/theta);
 			var power = frac*(1-min_power)+min_power;
 			//server.print("frac(" + frac+")*(1-"+ min_power+")+"+min_power + " -> " + power);
 			//if(frac > 1) server.print("FRAC TOO HIGH - ABORT " + frac);
@@ -66,12 +250,8 @@ function navx_rot(theta) {
 	};
 }
 
-function get_target_change(current, theta) {
-	var trial1 = current-theta;
-}
-
 function fix_angle(theta) {
-	return theta > 0 ? theta : 360 + theta;
+	return theta < 0 ? 360 + theta : theta;
 }
 
 function angle_between(theta, phi) {
@@ -778,6 +958,9 @@ function f(power) {
 		}
 	});
 }
+
+
+
 
 
 
