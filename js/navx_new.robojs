@@ -16,7 +16,13 @@ var navx;
 
 var testspeed = 2100;
 var commands = [
-	nice_rotation(90),
+	//nice_rotation(90),
+	drive(2000),
+	nice_rotation(-90),
+	drive(2000),
+	nice_rotation(180),
+	drive(2000),
+	exit(),
 	sleep(500),
 	drive(2000),
 	sleep(500),
@@ -118,7 +124,7 @@ function nice_rotation(theta) {
 		return function() {
 			var whereToGo = getCircleStuff(fix_angle(navx.getYaw()), target);
 
-			var completedFrac = (Math.abs(fix_angle(navx.getYaw()) - target)%360)/whereToGoOriginal.dist;
+			var completedFrac = (Math.abs(fix_angle(navx.getYaw()) - target)%360)/whereToGoOriginal.dist*0.8;
 			//server.print(completedFrac);
 			var power = Math.max(0.01, Math.min(completedFrac, 1));
 
@@ -127,7 +133,7 @@ function nice_rotation(theta) {
 
 			forAllMotors(function(m) {m.setPower(whereToGo.orientation ? power : -power);});
 
-			var angleTolerance = 0.5;
+			var angleTolerance = 0.3;
 			if(closeInProximity(fix_angle(navx.getYaw()), target, angleTolerance)) {
 				++continuousRoundsCompleted;
 				server.print(continuousRoundsCompleted);
@@ -603,7 +609,10 @@ function init() {
 	right_front = hardwareMap.dcMotor.get("right_front");
 
 	// get navx
-	navx = AHRS.getInstance(hardwareMap.deviceInterfaceModule.get("navx_controller"), 0, AHRS.DeviceDataType.kProcessedData);
+	if(typeof navx == "undefined") {
+		navx = AHRS.getInstance(hardwareMap.deviceInterfaceModule.get("navx_controller"), 0, AHRS.DeviceDataType.kProcessedData);
+	}
+	navx.zeroYaw();
 	
 	//initialize motors
 	forAllMotors(function(self) {
@@ -958,6 +967,7 @@ function f(power) {
 		}
 	});
 }
+
 
 
 
