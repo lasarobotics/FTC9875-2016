@@ -95,7 +95,7 @@ public class NavX {
      */
     private int signBetween(float theta, float phi) {
         if (theta == phi) return 0;
-navx.
+
         float psi = theta - phi;
         if (psi > 0)
             return psi <= 180 ? 1 : -1;
