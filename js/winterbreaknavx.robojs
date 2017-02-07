@@ -20,6 +20,11 @@ var commands = [
 	rotate(-90),
 	drive(1000),
 	exit(),*/
+	navx_strafe(1000),
+	exit(),
+	nice_rotation(90),
+	nice_rotation(0),
+	exit(),
 	drive(1600),
 	sleep(300),
 	nice_rotation(90),
@@ -587,6 +592,18 @@ function build_command(lb, lf, rb, rf, zero) {
 	};
 }
 
+var navxTime;
+function zeroYaw() {
+	if(typeof navxTime == "undefined") {
+		navxTime = (new Date()).getTime();
+		navx.zeroYaw();
+	} else {
+		if((new Date()).getTime() > (navxTime + 500)) {
+			navx.zeroYaw();
+		}
+	}
+}
+
 /*___	_____	_	_	____	____	_____	__	 
  / __)(	_	)( \( )(_	_)(	_ \(	_	)(	)	
 ( (__	)(_)(	)	(	 )(	 )	 / )(_)(	)(__ 
@@ -619,7 +636,7 @@ function init() {
 	if(typeof navx == "undefined") {
 		navx = AHRS.getInstance(hardwareMap.deviceInterfaceModule.get("navx_controller"), 0, AHRS.DeviceDataType.kProcessedData);
 	}
-	navx.zeroYaw();
+	zeroYaw();
 	
 	//get & initialize servos
 	arm = hardwareMap.crservo.get("button_presser");
@@ -985,6 +1002,110 @@ function f(power) {
 	});
 }
 
+function navx_strafe(distance) {
+	if(distance == 0) return function() { return function() { return 0; }; };
+
+	var power = distance > 0 ? 1 : -1;
+	var arr = strafe_turn_coefficients(power, 0);
+	return function() {
+		forAllMotors(function(motor) {
+			motor.setMode(hardware.DcMotor.RunMode.RUN_TO_POSITION);
+		});
+
+		var lbc = arr[0] * distance;
+		var lfc = arr[1] * distance;
+		var rbc = arr[2] * distance;
+		var rfc = arr[3] * distance;
+		
+		left_back.setTargetPosition(lbc);
+		left_front.setTargetPosition(lfc);
+		right_back.setTargetPosition(rbc);
+		right_front.setTargetPosition(rfc);
+
+		return function() {
+			var angleDist = fix_angle(navx.getYaw()) % 360;
+
+			var anglePower = 0;
+			if(angleDist < 0) angleDist += 360;
+			if(angleDist < 30) {
+				anglePower = 1;
+			} else {
+				anglePower = Math.min(angleDist / 30, 0.01);
+			}
+
+			var coeffs = strafe_turn_coefficients(power, anglePower);
+
+			left_back.setPower(coeffs[0]);
+			left_front.setPower(coeffs[1]);
+			right_back.setPower(coeffs[2]);
+			right_front.setPower(coeffs[3]);
+			
+			var lbd = Math.abs(left_back.getCurrentPosition() - lbc);
+			var lfd = Math.abs(left_front.getCurrentPosition() - lfc);
+			var rbd = Math.abs(right_back.getCurrentPosition() - rbc);
+			var rfd = Math.abs(right_front.getCurrentPosition() - rfc);
+			
+			var arr = [lbd < 10,
+				  lfd < 10,
+				  rbd < 10,
+				  rfd < 10];
+			var ctr = 0;
+			if(arr[0]) ctr++;
+			if(arr[1]) ctr++;
+			if(arr[2]) ctr++;
+			if(arr[3]) ctr++;
+	
+			ret = ctr > 2; //greater than 2 wheels made it
+			if(ret) {
+				f(0);
+				next();
+			}
+		};
+	};
+}
+
+function strafe_turn_coefficients(strafe, turn) {
+	var lbs = -1 * strafe;
+	var lfs = 1 * strafe;
+	var rbs = -1 * strafe;
+	var rfs = 1 * strafe;
+
+	var lbt = turn;
+	var lft = turn;
+	var rbt = turn;
+	var rft = turn;
+
+	var lbe = lbs + lbt;
+	var lfe = lfs + lft;
+	var rbe = rbs + rbt;
+	var rfe = rfs + rft;
+
+	var max = Math.max(Math.abs(lbe), Math.max(Math.abs(lfe), Math.max(Math.abs(rbe), Math.abs(rfe))));
+	//server.print(max);
+	if(max == 0) {
+		f(0);
+		return;
+	}
+
+	//var stm = strafe + turn;
+	if(max > 1) {
+		lbe /= max;
+		lfe /= max;
+		rbe /= max;
+		rfe /= max;
+	}
+
+	return [lbe, lfe, rbe, rfe];
+}
+
+function st(strafe, turn) {
+	var arr = strafe_turn_coefficients(strafe, turn);
+
+	left_back.setPower(arr[0]);
+	left_front.setPower(arr[1]);
+	right_back.setPower(arr[2]);
+	right_front.setPower(arr[3]);
+}
 
 
 
