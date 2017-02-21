@@ -1,15 +1,18 @@
-var left_back, left_front, right_back, right_front, arm, latch, bottom, colors, range;
+var left_back, left_front, right_back, right_front, arm, latch, 
+bottom, colors, range;
 var hardware = Packages.com.qualcomm.robotcore.hardware;
 var tol = 0.05;
 var commandIndex = 0;
 var ninety_degree_angle = 1650; //TODO get better at this
 var full_rotation = 1440;
-var CENTIMETERS = Packages.org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit.CM;
+var CENTIMETERS = 
+Packages.org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit.CM;
 var run_once_db = {};
 var AHRS = Packages.com.kauailabs.navx.ftc.AHRS;
 
 var commands = [
-	/*rotate(-180), //test out motor ability to return to start
+	/*rotate(-180), //test out motor ability to return to 
+start
 	drive(1000),
 	rotate(90),
 	drive(500),
@@ -37,22 +40,33 @@ var commands = [
 		drive_power(0.2),
 		output("waiting until touching white"),
 		wait_until(touching_white()),
-		_while("nearbeacondoublecheck", not(near_beacon())),
+		_while("nearbeacondoublecheck", 
+not(near_beacon())),
 			output("strafing"),
 			enable_top_led(true),
 			strafe_power(-0.25),
-			_while("stay_on_white", not(near_beacon())),
-				_if("off", not(touching_white())),
-					output("    not touching white"),
+			_while("stay_on_white", 
+not(near_beacon())),
+				_if("off", 
+not(touching_white())),
+					output("    not 
+touching white"),
 					drive_power(-0.1),
-					wait_until(or(touching_white(), driven_forward(200))),
-					output("    wait done"),
-					_if("twinner", not(touching_white())),
-						output("        not touching white"),
-						drive_power(0.1),
-						wait_until(touching_white()),
+					
+wait_until(or(touching_white(), driven_forward(200))),
+					output("    wait 
+done"),
+					_if("twinner", 
+not(touching_white())),
+						output("        
+not touching white"),
+						
+drive_power(0.1),
+						
+wait_until(touching_white()),
 					_fi("twinner"),
-					output("    going back to strafing"),
+					output("    going back 
+to strafing"),
 					strafe_power(-0.25),
 				_fi("off"),
 			_done("stay_on_white"),
@@ -108,7 +122,8 @@ var commands = [
 		reset_motors(),
 		sleep(200),
 		run_once("driveafterfirstbeacon", drive(1000)),
-		output("---------DONE with one beacon----------"),
+		output("---------DONE with one 
+beacon----------"),
 	_done("toplevel"),
 	drive_power(0.0),
 	enable_led(false),
@@ -118,10 +133,10 @@ var commands = [
 	drive(2200),
 	nice_rotation(-20),*/
 	//nice_rotation(-30),
-
+	artificialZeroYaw(),
 	drive(-full_rotation * 2),
 	nice_rotation(45),
-	drive(-full_rotation * 3.4),
+	drive(-full_rotation * 3.8),
 	nice_rotation(0),
 	output("DONE"),
 	enable_led(true),
@@ -131,7 +146,9 @@ var commands = [
 	enable_led(false),
 	drive_power(0),
 	output("testing"),
+	nice_rotation(0),
 	drive(-400),
+	nice_rotation(0),
 	output("preif"),
 	_if("blue?", beacon_blue()),
 		output("blue"),
@@ -167,34 +184,73 @@ var commands = [
 	drive(2000),
 ];
 
+function artificialZeroYaw() {
+	return function() {
+		yawChange = navx.getYaw();
+		return function() {
+			next();
+			return true;
+		};
+	};
+}
+
+var yawChange = -102.44;
+
+function yaw() {
+	var yaw = navx.getYaw();
+	yaw -= yawChange;
+	if(yaw < 0) yaw += 360;
+	yaw %= 360;
+	yaw = fix_angle(yaw);
+	yaw %= 360;
+	return yaw;
+}
+
 function nice_rotation(theta) {
 	var continuousRoundsCompleted = 0;
 	return function() {
 		server.print("Running nice rotation");
 		set_run_using_encoder();
 		var target = (theta)%360;
-		var whereToGoOriginal = getCircleStuff(fix_angle(navx.getYaw()), target);
-		server.print("Where to go original: " + JSON.stringify(whereToGoOriginal));
+		var whereToGoOriginal = 
+getCircleStuff(fix_angle(yaw()), target);
+		server.print("Where to go original: " + 
+JSON.stringify(whereToGoOriginal));
 		return function() {
-			var whereToGo = getCircleStuff(fix_angle(navx.getYaw()), target);
+			var whereToGo = 
+getCircleStuff(fix_angle(yaw()), target);
 
-			//server.print((Math.abs(fix_angle(navx.getYaw()) - target)%360) + " " + whereToGoOriginal.dist);
-			var completedFrac = (Math.abs(fix_angle(navx.getYaw()) - target)%360)/whereToGoOriginal.dist * 0.8;
+			
+//server.print((Math.abs(fix_angle(yaw()) - 
+//target)%360) + " " + whereToGoOriginal.dist);
+			var completedFrac = 
+(Math.abs(fix_angle(yaw()) - 
+target)%360)/whereToGoOriginal.dist * 0.8;
 			//server.print(completedFrac);
-			var power = Math.max(0.02, Math.min(completedFrac, 0.1) * 0.8);
+			var power = Math.max(0.02, 
+Math.min(completedFrac, 0.1) * 0.8);
 
-			var left = (target - fix_angle(navx.getYaw()))%360;
-			//server.print((Math.round(left*100)/100) + " " + (Math.round(100*completedFrac)/100));
+			var left = (target - 
+fix_angle(yaw()))%360;
+			
+//server.print((Math.round(left*100)/100) + " " + 
+//(Math.round(100*completedFrac)/100));
 
-			forAllMotors(function(m) {m.setPower(whereToGo.orientation ? -power : power);});
+			forAllMotors(function(m) 
+{m.setPower(whereToGo.orientation ? -power : power);});
 
 			var angleTolerance = 2;
-			if(closeInProximity(fix_angle(navx.getYaw()), target, angleTolerance)) {
+			
+if(closeInProximity(fix_angle(yaw()), target, 
+angleTolerance)) {
 				++continuousRoundsCompleted;
-				server.print(continuousRoundsCompleted);
-				if(continuousRoundsCompleted > 10) {
-					server.print("theta: " + fix_angle(navx.getYaw()) + " target: " + target + " angleTolerance: " + angleTolerance);
-					forAllMotors(function(m) {m.setPower(0);});
+				
+server.print(continuousRoundsCompleted);
+				if(continuousRoundsCompleted > 
+10) {
+					server.print("theta: " + fix_angle(yaw()) + " target: " + target + " angleTolerance: " + angleTolerance);
+					
+forAllMotors(function(m) {m.setPower(0);});
 					next();
 					return true;
 				}
@@ -241,7 +297,8 @@ function getCircleStuff(theta0, theta1) {
 			end += 360;
 		}
 		return {
-			orientation: !flip0 && !(theta0 > theta1),
+			orientation: !flip0 && !(theta0 > 
+theta1),
 			dist: dt0
 		};
 	} else {
@@ -250,7 +307,8 @@ function getCircleStuff(theta0, theta1) {
 			end += 360;
 		}
 		return {
-			orientation: ((theta0 < theta1) ^ flip1) == 1,
+			orientation: ((theta0 < theta1) ^ 
+flip1) == 1,
 			dist: dt1
 		};
 	}
@@ -313,12 +371,17 @@ function driven_forward(ticks) {
 		var lbc = left_back.getCurrentPosition();
 		var lfc = left_front.getCurrentPosition();
 		var rbc = right_back.getCurrentPosition();
-		var rfc = right_front.getCurrentPosition(); //lf rbc
+		var rfc = right_front.getCurrentPosition(); 
+//lf rbc
 		return function() {
-			var ret = Math.abs(left_back.getCurrentPosition() - lbc) >= ticks &&
-				Math.abs(left_front.getCurrentPosition() - lfc) >= ticks &&
-				Math.abs(right_back.getCurrentPosition() - rbc) >= ticks &&
-				Math.abs(right_front.getCurrentPosition() - rfc) >= ticks;
+			var ret = 
+Math.abs(left_back.getCurrentPosition() - lbc) >= ticks &&
+				
+Math.abs(left_front.getCurrentPosition() - lfc) >= ticks &&
+				
+Math.abs(right_back.getCurrentPosition() - rbc) >= ticks &&
+				
+Math.abs(right_front.getCurrentPosition() - rfc) >= ticks;
 			if(ret) next();
 			return ret;
 		};
@@ -331,7 +394,8 @@ function build_button_presser(dist) { //dist is in milliseconds. positive = out,
 	var oldTime = (new Date()).getTime();
 	return function() {
 		var currentTime = (new Date()).getTime();
-		var ret = (currentTime-oldTime) >= Math.abs(dist);
+		var ret = (currentTime-oldTime) >= 
+Math.abs(dist);
 		if(ret) {
 			next();
 			arm.setPower(0);
@@ -368,8 +432,10 @@ function near_beacon() {
 function beacon_color_unknown() {
 	return function() {
 		return function() {
-			server.print('    blue: ' + colors.blue());
-			server.print('    red : ' + colors.red());
+			server.print('    blue: ' + 
+colors.blue());
+			server.print('    red : ' + 
+colors.red());
 			return colors.blue() == colors.red();
 		};
 	};
@@ -461,39 +527,45 @@ function fade_in_linear(current, max, fade) {
 function set_run_to_position() {
 	zero_motors();
 	forAllMotors(function(self) {
-		self.setMode(hardware.DcMotor.RunMode.RUN_TO_POSITION);
+		
+self.setMode(hardware.DcMotor.RunMode.RUN_TO_POSITION);
 	});
 }
 
 function set_run_using_encoder() {
 	zero_motors();
 	forAllMotors(function(self) {
-		self.setMode(hardware.DcMotor.RunMode.RUN_USING_ENCODER);
+		
+self.setMode(hardware.DcMotor.RunMode.RUN_USING_ENCODER);
 	});
 }
 
 function drive(ticks, run) {
 	return function() {
-		return build_command(ticks, ticks, -ticks, -ticks, run);
+		return build_command(ticks, ticks, -ticks, 
+-ticks, run);
 	};
 }
 
 function strafe(ticks) {
 	return function() {
-		return build_command(ticks, -ticks, ticks, -ticks);
+		return build_command(ticks, -ticks, ticks, 
+-ticks);
 	};
 }
 
 function rotate(angle) {
 	var turnAmount = ninety_degree_angle/90 * angle;
 	return function() {
-		return build_command(turnAmount, turnAmount, turnAmount, turnAmount);
+		return build_command(turnAmount, turnAmount, 
+turnAmount, turnAmount);
 	};
 }
 
 /*function build_command(lb, lf, rb, rf) {
 	forAllMotors(function(motor) {
-		motor.setMode(hardware.DcMotor.RunMode.RUN_TO_POSITION);
+		
+motor.setMode(hardware.DcMotor.RunMode.RUN_TO_POSITION);
 	});
 	//c = current
 	var lbc = left_back.getCurrentPosition();
@@ -525,16 +597,30 @@ function rotate(angle) {
 	var scale = 1-minPower;
 	return function() {
 		//d = difference
-		var lbd = Math.abs(left_back.getCurrentPosition() - lbc);
-		var lfd = Math.abs(left_front.getCurrentPosition() - lfc);
-		var rbd = Math.abs(right_back.getCurrentPosition() - rbc);
-		var rfd = Math.abs(right_front.getCurrentPosition() - rfc);
-		//server.print('fade_in(' + lbd + ', ' + lba + ', ' + lbfi + ')');
-		//server.print('fade ' + fade_in_linear(lbd, lba, lbfi));
-		left_back.setPower(lbp*(scale*(fade_in_linear(lbd, lba, lbfi))+minPower));
-		left_front.setPower(lfp*(scale*(fade_in_linear(lfd, lfa, lffi))+minPower));
-		right_back.setPower(rbp*(scale*(fade_in_linear(rbd, rba, rbfi))+minPower));
-		right_front.setPower(rfp*(scale*(fade_in_linear(rfd, rfa, rffi))+minPower));
+		var lbd = 
+Math.abs(left_back.getCurrentPosition() - lbc);
+		var lfd = 
+Math.abs(left_front.getCurrentPosition() - lfc);
+		var rbd = 
+Math.abs(right_back.getCurrentPosition() - rbc);
+		var rfd = 
+Math.abs(right_front.getCurrentPosition() - rfc);
+		//server.print('fade_in(' + lbd + ', ' + lba + 
+', ' + lbfi + ')');
+		//server.print('fade ' + fade_in_linear(lbd, 
+lba, lbfi));
+		
+left_back.setPower(lbp*(scale*(fade_in_linear(lbd, lba, 
+lbfi))+minPower));
+		
+left_front.setPower(lfp*(scale*(fade_in_linear(lfd, lfa, 
+lffi))+minPower));
+		
+right_back.setPower(rbp*(scale*(fade_in_linear(rbd, rba, 
+rbfi))+minPower));
+		
+right_front.setPower(rfp*(scale*(fade_in_linear(rfd, rfa, 
+rffi))+minPower));
 		var res = lbd >= lba &&
 				 lfd >= lfa &&
 				 rbd >= rba &&
@@ -551,7 +637,8 @@ function build_command(lb, lf, rb, rf, zero) {
 		zero_motors();
 	}
 	forAllMotors(function(motor) {
-		motor.setMode(hardware.DcMotor.RunMode.RUN_TO_POSITION);
+		
+motor.setMode(hardware.DcMotor.RunMode.RUN_TO_POSITION);
 	});
 	var lbc = left_back.getCurrentPosition();
 	var lfc = left_front.getCurrentPosition();
@@ -571,10 +658,14 @@ function build_command(lb, lf, rb, rf, zero) {
 		left_front.setPower(lf > 0 ? power : -power);
 		right_back.setPower(rb > 0 ? power : -power);
 		right_front.setPower(rf > 0 ? power : -power);
-		var lbd = Math.abs(left_back.getCurrentPosition() - lbc);
-		var lfd = Math.abs(left_front.getCurrentPosition() - lfc);
-		var rbd = Math.abs(right_back.getCurrentPosition() - rbc);
-		var rfd = Math.abs(right_front.getCurrentPosition() - rfc);
+		var lbd = 
+Math.abs(left_back.getCurrentPosition() - lbc);
+		var lfd = 
+Math.abs(left_front.getCurrentPosition() - lfc);
+		var rbd = 
+Math.abs(right_back.getCurrentPosition() - rbc);
+		var rfd = 
+Math.abs(right_front.getCurrentPosition() - rfc);
 		
 		var arr = [Math.abs(lbd - Math.abs(lb)) < 10,
 			  Math.abs(lfd - Math.abs(lf)) < 10,
@@ -596,8 +687,10 @@ function build_command(lb, lf, rb, rf, zero) {
 }
 
 /*___	_____	_	_	____	____	_____	__	 
- / __)(	_	)( \( )(_	_)(	_ \(	_	)(	)	
-( (__	)(_)(	)	(	 )(	 )	 / )(_)(	)(__ 
+ / __)(	_	)( \( )(_	_)(	_ \(	_	)(	
+)	
+( (__	)(_)(	)	(	 )(	 )	 / )(_)(	
+)(__ 
  \___)(_____)(_)\_) (__) (_)\_)(_____)(____)
 */
 function init() {
@@ -628,11 +721,14 @@ function init() {
 	latch = hardwareMap.crservo.get("latch");
 	arm.setPower(0);
 	latch.setPower(0);
-	navx = AHRS.getInstance(hardwareMap.deviceInterfaceModule.get("navx_controller"), 0, AHRS.DeviceDataType.kProcessedData);
+	navx = 
+AHRS.getInstance(hardwareMap.deviceInterfaceModule.get("navx_controller"), 
+0, AHRS.DeviceDataType.kProcessedData);
 	
 	//initialize motors
 	forAllMotors(function(self) {
-		self.setZeroPowerBehavior(hardware.DcMotor.ZeroPowerBehavior.FLOAT);
+		
+self.setZeroPowerBehavior(hardware.DcMotor.ZeroPowerBehavior.FLOAT);
 	});
 	resetMotors();
 	while(left_back.getCurrentPosition() != 0) {
@@ -697,8 +793,10 @@ function process() {
 	//find matching ends and connect them with loops
 	for(i = 0; i < commands.length; i++) {
 		if(commands[i].name == 'end_anon') {
-			commands[i].jumpindex = loops[commands[i].loopname];
-			commands[loops[commands[i].loopname]].jumpindex = i+1;
+			commands[i].jumpindex = 
+loops[commands[i].loopname];
+			
+commands[loops[commands[i].loopname]].jumpindex = i+1;
 		}
 	}
 	
@@ -723,25 +821,32 @@ function process() {
 		
 		if(typeof elses[key] !== 'undefined') {
 			//there is a corresponding else
-			commands[ifs[key]].jumpindex = elses[key]+1;
+			commands[ifs[key]].jumpindex = 
+elses[key]+1;
 			if(typeof fis[key] !== 'undefined') {
-				commands[elses[key]].jumpindex = fis[key]+1;
+				commands[elses[key]].jumpindex 
+= fis[key]+1;
 			} else {
 				throw("Unmatched if/else with fi.");
 			}
 		} else if(typeof fis[key] !== 'undefined') {
 			//there is a corresponding fi
-			commands[ifs[key]].jumpindex = fis[key]+1;
+			commands[ifs[key]].jumpindex = 
+fis[key]+1;
 		} else {
 			throw("Unmatched if with fi");
 		}
 	}
 }
 
-/*__	__	_____	____	_____	____		__	__	____	____	__	 
- (	\/	)(	_	)(_	_)(	_	)(	_ \	(	)(	)(_	_)(_	_)(	)	
-	)		(	)(_)(	 )(	 )(_)(	)	 /	 )(__)(	 )(	 _)(_	)(__ 
- (_/\/\_)(_____) (__) (_____)(_)\_)	(______) (__) (____)(____)
+/*__	__	_____	____	_____	____		__	
+__	____	____	__	 
+ (	\/	)(	_	)(_	_)(	_	)(	
+_ \	(	)(	)(_	_)(_	_)(	)	
+	)		(	)(_)(	 )(	 )(_)(	)	 
+/	 )(__)(	 )(	 _)(_	)(__ 
+ (_/\/\_)(_____) (__) (_____)(_)\_)	(______) (__) 
+(____)(____)
 */
 function forAllMotors(operation) {
 	operation(left_back);
@@ -753,7 +858,8 @@ function forAllMotors(operation) {
 function resetMotors() {
 	arm.setPower(0);
 	forAllMotors(function(self) {
-		self.setMode(hardware.DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+		
+self.setMode(hardware.DcMotor.RunMode.STOP_AND_RESET_ENCODER);
 	});
 	resetting = true;
 }
@@ -764,10 +870,14 @@ function zero_motors() {
 	});
 }
 
-/*___	 ___	____	____	____	____		__	__	____	____	__		___ 
- / __) / __)(	_ \(_	_)(	_ \(_	_)	(	)(	)(_	_)(_	_)(	)	/ __)
- \__ \( (__	)	 / _)(_	)___/	)(		 )(__)(	 )(	 _)(_	)(__ \__ \
- (___/ \___)(_)\_)(____)(__)	 (__)	 (______) (__) (____)(____)(___/
+/*___	 ___	____	____	____	____		__	
+__	____	____	__		___ 
+ / __) / __)(	_ \(_	_)(	_ \(_	_)	(	)(	
+)(_	_)(_	_)(	)	/ __)
+ \__ \( (__	)	 / _)(_	)___/	)(		 )(__)(	 
+)(	 _)(_	)(__ \__ \
+ (___/ \___)(_)\_)(____)(__)	 (__)	 (______) (__) 
+(____)(____)(___/
 */
 function next() {
 	commandIndex++;
@@ -878,7 +988,8 @@ function _while(str, condition, run_first_time) {
 			if(ret.check() === true) {
 				next();
 			} else {
-				jmp(commands[commandIndex].jumpindex);
+				
+jmp(commands[commandIndex].jumpindex);
 			}
 		}
 	};
@@ -917,7 +1028,8 @@ function _fi(str) {
 
 function _done(str) {
 	var ret = function end_anon() {
-		var loopbegin = commands[commandIndex].jumpindex;
+		var loopbegin = 
+commands[commandIndex].jumpindex;
 		var checker = commands[loopbegin].check;
 		if(checker !== undefined) {
 			if(!checker()) {
@@ -951,10 +1063,12 @@ function wait_until(predicate) {
 function reset_motors() {
 	return function() {
 		forAllMotors(function(self) {
-			self.setMode(hardware.DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+			
+self.setMode(hardware.DcMotor.RunMode.STOP_AND_RESET_ENCODER);
 		});
 		return function() {
-			var ret = left_back.getCurrentPosition() == 0;
+			var ret = 
+left_back.getCurrentPosition() == 0;
 			if(ret) {
 				next();
 			}
@@ -987,5 +1101,8 @@ function f(power) {
 		}
 	});
 }
+
+
+
 
 

@@ -1,4 +1,4 @@
-var left_back, left_front, right_back, right_front, arm, latch, bottom, colors, range;
+var left_back, left_front, right_back, right_front, arm, latch, bottom, colors, range, navx;
 var hardware = Packages.com.qualcomm.robotcore.hardware;
 var tol = 0.05;
 var commandIndex = 0;
@@ -20,18 +20,23 @@ var commands = [
 	rotate(-90),
 	drive(1000),
 	exit(),*/
-	/*drive(1600),
+	/*navx_strafe(1000),
+	exit(),
+	nice_rotation(90),
+	nice_rotation(0),
+	exit(),
+	drive(1600),
 	sleep(300),
 	nice_rotation(90),
 	sleep(300),
-	drive(5900),
+	drive(5600), //wqs 5900
 	sleep(300),
-	nice_rotation(-90),
+	nice_rotation(0),
 	reset_motors(),
 	sleep(300),
 	enable_led(true),
 	_while("toplevel", times(2)),
-		drive(2000, false),
+		//drive(2000, false),
 		output("toplevel"),
 		enable_led(true), //KILL ME
 		drive_power(0.2),
@@ -44,6 +49,7 @@ var commands = [
 			_while("stay_on_white", not(near_beacon())),
 				_if("off", not(touching_white())),
 					output("    not touching white"),
+					nice_rotation(0),
 					drive_power(-0.1),
 					wait_until(or(touching_white(), driven_forward(200))),
 					output("    wait done"),
@@ -116,57 +122,176 @@ var commands = [
 	drive(-4000),
 	nice_rotation(-90),
 	drive(2200),
-	nice_rotation(-20),*/
-	//nice_rotation(-30),
+	nice_rotation(-20),
+	nice_rotation(20),*/
 
-	drive(-full_rotation * 2),
+	// auto
+	/*drive(-full_rotation * 2),
 	nice_rotation(45),
-	drive(-full_rotation * 3.4),
+	/*drive(-full_rotation * 3.4),
 	nice_rotation(0),
-	output("DONE"),
 	enable_led(true),
 	drive_power(0.3),
-	enable_led(true),
 	wait_until(touching_white()),
-	enable_led(false),
 	drive_power(0),
-	output("testing"),
 	drive(-400),
-	output("preif"),
 	_if("blue?", beacon_blue()),
-		output("blue"),
 		drive(-550),
-	_else("blue?"),
-		output("not blue"),
 	_fi("blue?"),
-	
-	output("about to press button"),
-	button_presser(2000),
-	button_presser(-2300),
-	drive(-2300, false),
+	button_presser(1500),
+	button_presser(-1500),
+	drive(-2000, false),
 	drive_power(-0.3),
-	output("waiting for white"),
-	enable_led(true),
 	wait_until(touching_white()),
-	enable_led(false),
 	drive_power(0),
 	drive(400),
-	_if("blue2?", beacon_blue()),
+	_if("blue?", beacon_blue()),
 		drive(550),
-	_else("blue2?"),
-		output("not blue"),
-	_fi("blue2?"),
-	output("about to press button"),
-	button_presser(2300),
-	button_presser(-2300),
+	_fi("blue?"),
+	button_presser(1500),
+	button_presser(-1500),
 	drive(3000),
 	nice_rotation(-90),
-	drive(-2500),
-	//drive(3000),
-	nice_rotation(45),
-	drive(2000),
+	drive(-2000),
+	drive(3000),
+	nice_rotation(-45),
+	drive(2000),*/
+	nice_rotation(180),
 ];
 
+/*
+ *  _________________________________________ 
+/                                         \
+| _______________________________________ |
+| __ / __________________________________ |
+| / \ | ____ __ __ \ | | | / __ \____ /   |
+| /_ ____ | | / /_ | | | | / /_/ / __ \/  |
+| __ \/ __ \/ | | __/ | | | | / _, _/ /_/ |
+| / /_/ / /_/ / | | /_ /_/ | \            |
+| |_|\____/_.___/\____/\__/ / | | | |     |
+| ---------------------------------- | |  |
+| | | \ ^__^ | | | | \ (oo)\_______ | | | |
+| | (__)\ )\/\ | | | | ||----w | | | | \  |
+| || || /                                 |
+|                                         |
+| --------------------------------------- |
+| --                                      |
+|                                         |
+| \ ^__^                                  |
+|                                         |
+| \ (oo)\_______                          |
+|                                         |
+| (__)\ )\/\                              |
+|                                         |
+| ||----w |                               |
+|                                         |
+\ || ||                                   /
+ ----------------------------------------- 
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
+
+ */
+
+function button_presser(dist) {
+	return function() {
+		return build_button_presser(dist);
+	};
+}
+
+function strafe_power(direction) {
+	return function() {
+		set_run_using_encoder();
+		var ptr = direction;
+		forAllMotors(function(m) {
+			m.setPower(ptr); ptr=-ptr;
+		});
+		next();
+	};
+}
+
+function rotate_power(power) {
+	return function() {
+		set_run_using_encoder();
+		forAllMotors(function(m) {
+			m.setPower(power);
+		});
+		next();
+	};
+}
+
+function drive_power(power) {
+	return function() {
+		set_run_using_encoder();
+		var ptr = power;
+		var counter = 0;
+		forAllMotors(function(m) {
+			m.setPower(ptr);
+			if(++counter == 2) {
+				ptr = -ptr;
+			}
+		});
+		next();
+	};
+}
+
+function driven_forward(ticks) {
+	return function() {
+		var lbc = left_back.getCurrentPosition();
+		var lfc = left_front.getCurrentPosition();
+		var rbc = right_back.getCurrentPosition();
+		var rfc = right_front.getCurrentPosition(); //lf rbc
+		return function() {
+			var ret = Math.abs(left_back.getCurrentPosition() - lbc) >= ticks &&
+				Math.abs(left_front.getCurrentPosition() - lfc) >= ticks &&
+				Math.abs(right_back.getCurrentPosition() - rbc) >= ticks &&
+				Math.abs(right_front.getCurrentPosition() - rfc) >= ticks;
+			if(ret) next();
+			return ret;
+		};
+	};
+}
+
+//---------------------------------
+/*function nice_rotation(theta) {
+	var continuousRoundsCompleted = 0;
+	return function() {
+		server.print("Running nice rotation");
+		set_run_using_encoder();
+		var target = (fix_angle(navx.getYaw())+theta)%360;
+		var whereToGoOriginal = getCircleStuff(fix_angle(navx.getYaw()), target);
+		server.print("Where to go original: " + JSON.stringify(whereToGoOriginal));
+		return function() {
+			var whereToGo = getCircleStuff(fix_angle(navx.getYaw()), target);
+
+			var completedFrac = (Math.abs(fix_angle(navx.getYaw()) - target)%360)/whereToGoOriginal.dist*0.8;
+			//server.print(completedFrac);
+			var power = Math.max(0.02, Math.min(completedFrac, 1) * 0.8);
+
+			var left = (target - fix_angle(navx.getYaw()))%360;
+			//server.print((Math.round(left*100)/100) + " " + (Math.round(100*completedFrac)/100));
+
+			forAllMotors(function(m) {m.setPower(whereToGo.orientation ? power : -power);});
+
+			var angleTolerance = 0.3;
+			if(closeInProximity(fix_angle(navx.getYaw()), target, angleTolerance)) {
+				++continuousRoundsCompleted;
+				server.print(continuousRoundsCompleted);
+				if(continuousRoundsCompleted > 10) {
+					server.print("theta: " + fix_angle(navx.getYaw()) + " target: " + target + " angleTolerance: " + angleTolerance);
+					forAllMotors(function(m) {m.setPower(0);});
+					next();
+					return true;
+				}
+			} else {
+				continuousRoundsCompleted = 0;
+			}
+			return false;
+		};
+	};
+}*/
 function nice_rotation(theta) {
 	var continuousRoundsCompleted = 0;
 	return function() {
@@ -178,7 +303,6 @@ function nice_rotation(theta) {
 		return function() {
 			var whereToGo = getCircleStuff(fix_angle(navx.getYaw()), target);
 
-			//server.print((Math.abs(fix_angle(navx.getYaw()) - target)%360) + " " + whereToGoOriginal.dist);
 			var completedFrac = (Math.abs(fix_angle(navx.getYaw()) - target)%360)/whereToGoOriginal.dist * 0.8;
 			//server.print(completedFrac);
 			var power = Math.max(0.02, Math.min(completedFrac, 0.1) * 0.8);
@@ -186,9 +310,9 @@ function nice_rotation(theta) {
 			var left = (target - fix_angle(navx.getYaw()))%360;
 			//server.print((Math.round(left*100)/100) + " " + (Math.round(100*completedFrac)/100));
 
-			forAllMotors(function(m) {m.setPower(whereToGo.orientation ? -power : power);});
+			forAllMotors(function(m) {m.setPower(whereToGo.orientation ? power : -power);});
 
-			var angleTolerance = 2;
+			var angleTolerance = 0.3;
 			if(closeInProximity(fix_angle(navx.getYaw()), target, angleTolerance)) {
 				++continuousRoundsCompleted;
 				server.print(continuousRoundsCompleted);
@@ -259,71 +383,7 @@ function getCircleStuff(theta0, theta1) {
 function fix_angle(theta) {
 	return theta < 0 ? 360 + theta : theta;
 }
-
-/*____	_____	____	_____	____ 
- (	_ \(	_	)(	_ \(	_	)(_	_)
-	)	 / )(_)(	) _ < )(_)(	 )(	
- (_)\_)(_____)(____/(_____) (__) 
-*/
-
-function button_presser(dist) {
-	return function() {
-		return build_button_presser(dist);
-	};
-}
-
-function strafe_power(direction) {
-	return function() {
-		set_run_using_encoder();
-		var ptr = direction;
-		forAllMotors(function(m) {
-			m.setPower(ptr); ptr=-ptr;
-		});
-		next();
-	};
-}
-
-function rotate_power(power) {
-	return function() {
-		set_run_using_encoder();
-		forAllMotors(function(m) {
-			m.setPower(power);
-		});
-		next();
-	};
-}
-
-function drive_power(power) {
-	return function() {
-		set_run_using_encoder();
-		var ptr = power;
-		var counter = 0;
-		forAllMotors(function(m) {
-			m.setPower(ptr);
-			if(++counter == 2) {
-				ptr = -ptr;
-			}
-		});
-		next();
-	};
-}
-
-function driven_forward(ticks) {
-	return function() {
-		var lbc = left_back.getCurrentPosition();
-		var lfc = left_front.getCurrentPosition();
-		var rbc = right_back.getCurrentPosition();
-		var rfc = right_front.getCurrentPosition(); //lf rbc
-		return function() {
-			var ret = Math.abs(left_back.getCurrentPosition() - lbc) >= ticks &&
-				Math.abs(left_front.getCurrentPosition() - lfc) >= ticks &&
-				Math.abs(right_back.getCurrentPosition() - rbc) >= ticks &&
-				Math.abs(right_front.getCurrentPosition() - rfc) >= ticks;
-			if(ret) next();
-			return ret;
-		};
-	};
-}
+//------------------------------------
 
 function build_button_presser(dist) { //dist is in milliseconds. positive = out, negative = in
 	dist = -dist; //so that positive == out
@@ -357,8 +417,8 @@ function exit() {
 function near_beacon() {
 	return function() {
 		return function() {
-			var ret = colors.red() >= 1 ||
-				  colors.blue() >= 1;
+			var ret = colors.red() > 1 ||
+				  colors.blue() > 1;
 			if(ret) server.print("--NEAR--");
 			return ret;
 		};
@@ -595,6 +655,18 @@ function build_command(lb, lf, rb, rf, zero) {
 	};
 }
 
+var navxTime;
+function zeroYaw() {
+	if(typeof navxTime == "undefined") {
+		navxTime = (new Date()).getTime();
+		navx.zeroYaw();
+	} else {
+		if((new Date()).getTime() > (navxTime + 500)) {
+			navx.zeroYaw();
+		}
+	}
+}
+
 /*___	_____	_	_	____	____	_____	__	 
  / __)(	_	)( \( )(_	_)(	_ \(	_	)(	)	
 ( (__	)(_)(	)	(	 )(	 )	 / )(_)(	)(__ 
@@ -622,13 +694,18 @@ function init() {
 	//range = hardwareMap.get("range");
 	//var caddr = new hardware.I2cAddr.create8bit(0x9c);
 	//range.setI2cAddress(caddr);
+
+	//navx
+	if(typeof navx == "undefined") {
+		navx = AHRS.getInstance(hardwareMap.deviceInterfaceModule.get("navx_controller"), 0, AHRS.DeviceDataType.kProcessedData);
+	}
+	zeroYaw();
 	
 	//get & initialize servos
 	arm = hardwareMap.crservo.get("button_presser");
 	latch = hardwareMap.crservo.get("latch");
 	arm.setPower(0);
 	latch.setPower(0);
-	navx = AHRS.getInstance(hardwareMap.deviceInterfaceModule.get("navx_controller"), 0, AHRS.DeviceDataType.kProcessedData);
 	
 	//initialize motors
 	forAllMotors(function(self) {
@@ -643,6 +720,9 @@ function init() {
 }
 
 function start() {
+	forAllMotors(function(self) {
+		self.setZeroPowerBehavior(hardware.DcMotor.ZeroPowerBehavior.BRAKE);
+	});
 	process();
 }
 
@@ -664,6 +744,9 @@ function loop() {
 	if(typeof cmd == 'undefined') {
 		stop();
 		server.print("Dead");
+		forAllMotors(function(self) {
+			self.setZeroPowerBehavior(hardware.DcMotor.ZeroPowerBehavior.FLOAT);
+		});
 		dead = true;
 		return;
 	}
@@ -678,6 +761,9 @@ function loop() {
 }
 
 function stop() {
+	forAllMotors(function(self) {
+		self.setZeroPowerBehavior(hardware.DcMotor.ZeroPowerBehavior.FLOAT);
+	});
 	zero_motors();
 	arm.setPower(0);
 	colors.enableLed(false);
@@ -987,5 +1073,124 @@ function f(power) {
 		}
 	});
 }
+
+function navx_strafe(distance) {
+	if(distance == 0) return function() { return function() { return 0; }; };
+
+	var power = distance > 0 ? 1 : -1;
+	var arr = strafe_turn_coefficients(power, 0);
+	return function() {
+		forAllMotors(function(motor) {
+			motor.setMode(hardware.DcMotor.RunMode.RUN_TO_POSITION);
+		});
+
+		var lbc = arr[0] * distance;
+		var lfc = arr[1] * distance;
+		var rbc = arr[2] * distance;
+		var rfc = arr[3] * distance;
+		
+		left_back.setTargetPosition(lbc);
+		left_front.setTargetPosition(lfc);
+		right_back.setTargetPosition(rbc);
+		right_front.setTargetPosition(rfc);
+
+		return function() {
+			var angleDist = fix_angle(navx.getYaw()) % 360;
+
+			var anglePower = 0;
+			if(angleDist < 0) angleDist += 360;
+			if(angleDist < 30) {
+				anglePower = 1;
+			} else {
+				anglePower = Math.min(angleDist / 30, 0.01);
+			}
+
+			var coeffs = strafe_turn_coefficients(power, anglePower);
+
+			left_back.setPower(coeffs[0]);
+			left_front.setPower(coeffs[1]);
+			right_back.setPower(coeffs[2]);
+			right_front.setPower(coeffs[3]);
+			
+			var lbd = Math.abs(left_back.getCurrentPosition() - lbc);
+			var lfd = Math.abs(left_front.getCurrentPosition() - lfc);
+			var rbd = Math.abs(right_back.getCurrentPosition() - rbc);
+			var rfd = Math.abs(right_front.getCurrentPosition() - rfc);
+			
+			var arr = [lbd < 10,
+				  lfd < 10,
+				  rbd < 10,
+				  rfd < 10];
+			var ctr = 0;
+			if(arr[0]) ctr++;
+			if(arr[1]) ctr++;
+			if(arr[2]) ctr++;
+			if(arr[3]) ctr++;
+	
+			ret = ctr > 2; //greater than 2 wheels made it
+			if(ret) {
+				f(0);
+				next();
+			}
+		};
+	};
+}
+
+function strafe_turn_coefficients(strafe, turn) {
+	var lbs = -1 * strafe;
+	var lfs = 1 * strafe;
+	var rbs = -1 * strafe;
+	var rfs = 1 * strafe;
+
+	var lbt = turn;
+	var lft = turn;
+	var rbt = turn;
+	var rft = turn;
+
+	var lbe = lbs + lbt;
+	var lfe = lfs + lft;
+	var rbe = rbs + rbt;
+	var rfe = rfs + rft;
+
+	var max = Math.max(Math.abs(lbe), Math.max(Math.abs(lfe), Math.max(Math.abs(rbe), Math.abs(rfe))));
+	//server.print(max);
+	if(max == 0) {
+		f(0);
+		return;
+	}
+
+	//var stm = strafe + turn;
+	if(max > 1) {
+		lbe /= max;
+		lfe /= max;
+		rbe /= max;
+		rfe /= max;
+	}
+
+	return [lbe, lfe, rbe, rfe];
+}
+
+function st(strafe, turn) {
+	var arr = strafe_turn_coefficients(strafe, turn);
+
+	left_back.setPower(arr[0]);
+	left_front.setPower(arr[1]);
+	right_back.setPower(arr[2]);
+	right_front.setPower(arr[3]);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
