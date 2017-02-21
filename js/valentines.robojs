@@ -151,34 +151,41 @@ beacon----------"),
 	nice_rotation(0),
 	output("preif"),
 	_if("blue?", beacon_blue()),
-		output("blue"),
+		output("blue-----------------"),
 		drive(-550),
+		nice_rotation(0),
 	_else("blue?"),
-		output("not blue"),
+		output("not blue----------"),
 	_fi("blue?"),
 	
 	output("about to press button"),
-	button_presser(2000),
+	button_presser(2300),
 	button_presser(-2300),
 	drive(-2300, false),
+	nice_rotation(0),
 	drive_power(-0.3),
 	output("waiting for white"),
 	enable_led(true),
 	wait_until(touching_white()),
 	enable_led(false),
 	drive_power(0),
-	drive(400),
+	nice_rotation(0),
+	drive(300),
+	nice_rotation(0),
 	_if("blue2?", beacon_blue()),
-		drive(550),
+		drive(-650),
+		nice_rotation(0),
+		output("blue2----------------"),
 	_else("blue2?"),
-		output("not blue"),
+		output("not blue2------------"),
 	_fi("blue2?"),
 	output("about to press button"),
-	button_presser(2300),
-	button_presser(-2300),
+	button_presser(2700),
+	button_presser(-2700),
+	exit(),
 	drive(3000),
 	nice_rotation(-90),
-	drive(-2500),
+	drive(-3000), //-2500
 	//drive(3000),
 	nice_rotation(45),
 	drive(2000),
@@ -239,7 +246,7 @@ fix_angle(yaw()))%360;
 			forAllMotors(function(m) 
 {m.setPower(whereToGo.orientation ? -power : power);});
 
-			var angleTolerance = 2;
+			var angleTolerance = 1.5;
 			
 if(closeInProximity(fix_angle(yaw()), target, 
 angleTolerance)) {
@@ -1101,6 +1108,7 @@ function f(power) {
 		}
 	});
 }
+
 
 
 

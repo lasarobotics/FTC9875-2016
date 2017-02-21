@@ -7,7 +7,7 @@ public class ShooterPlug implements Plug {
 
     }
     public void loop(Robot robot) {
-        if(robot.c1.dpad_down()) {
+        if(robot.c1.dpad_down() || robot.c2.dpad_down()) {
             robot.shooter.setPower(-1);
         } else {
             robot.shooter.setPower(0);
