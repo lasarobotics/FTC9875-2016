@@ -1,0 +1,1118 @@
+var left_back, left_front, right_back, right_front, arm, latch, 
+bottom, colors, range;
+var hardware = Packages.com.qualcomm.robotcore.hardware;
+var tol = 0.05;
+var commandIndex = 0;
+var ninety_degree_angle = 1650; //TODO get better at this
+var full_rotation = 1440;
+var CENTIMETERS = 
+Packages.org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit.CM;
+var run_once_db = {};
+var AHRS = Packages.com.kauailabs.navx.ftc.AHRS;
+
+var commands = [
+	/*rotate(-180), //test out motor ability to return to 
+start
+	drive(1000),
+	rotate(90),
+	drive(500),
+	strafe(400),
+	strafe(-400),
+	rotate(-180),
+	drive(500),
+	rotate(-90),
+	drive(1000),
+	exit(),*/
+	/*drive(1600),
+	sleep(300),
+	nice_rotation(90),
+	sleep(300),
+	drive(5900),
+	sleep(300),
+	nice_rotation(-90),
+	reset_motors(),
+	sleep(300),
+	enable_led(true),
+	_while("toplevel", times(2)),
+		drive(2000, false),
+		output("toplevel"),
+		enable_led(true), //KILL ME
+		drive_power(0.2),
+		output("waiting until touching white"),
+		wait_until(touching_white()),
+		_while("nearbeacondoublecheck", 
+not(near_beacon())),
+			output("strafing"),
+			enable_top_led(true),
+			strafe_power(-0.25),
+			_while("stay_on_white", 
+not(near_beacon())),
+				_if("off", 
+not(touching_white())),
+					output("    not 
+touching white"),
+					drive_power(-0.1),
+					
+wait_until(or(touching_white(), driven_forward(200))),
+					output("    wait 
+done"),
+					_if("twinner", 
+not(touching_white())),
+						output("        
+not touching white"),
+						
+drive_power(0.1),
+						
+wait_until(touching_white()),
+					_fi("twinner"),
+					output("    going back 
+to strafing"),
+					strafe_power(-0.25),
+				_fi("off"),
+			_done("stay_on_white"),
+			output("double checking beacon..."),
+			drive_power(0.0),
+			sleep(100),
+		_done("nearbeacondoublecheck"),
+		drive_power(0),
+		enable_top_led(false),
+		reset_motors(),
+		sleep(800),
+		output("hit beacon"),
+		_if("unknown", beacon_color_unknown()),
+			output("Skipping, color UNKNOWN"),
+			strafe(1200),
+		_else("unknown"),
+			_if("blue?", beacon_blue()),
+				output("blue beacon"),
+				output("    strafe"),
+				/*strafe(150),
+				sleep(200),
+				output("    drive"),
+				drive(-50),
+				sleep(200),
+				output("    strafe"),
+				strafe(-150),*/
+				/*drive(-50),
+				reset_motors(),
+				button_presser(1000),
+				button_presser(-1000),
+				drive(50),
+				strafe(1200),
+			_else("blue?"),
+				output("red_beacon"),
+				output("    strafe"),
+				strafe(300),
+				sleep(200),
+				output("    drive"),
+				drive(-550),
+				sleep(200),
+				output("    strafe"),
+				strafe(-300),
+				reset_motors(),
+				button_presser(2000),
+				button_presser(-2000),
+				sleep(200),
+				strafe(1200),
+				sleep(500),
+				drive(550),
+			_fi("blue?"),
+		_fi("unknown"),
+		//rotate(3),
+		reset_motors(),
+		sleep(200),
+		run_once("driveafterfirstbeacon", drive(1000)),
+		output("---------DONE with one 
+beacon----------"),
+	_done("toplevel"),
+	drive_power(0.0),
+	enable_led(false),
+	sleep(300),t
+	drive(-4000),
+	nice_rotation(-90),
+	drive(2200),
+	nice_rotation(-20),*/
+	//nice_rotation(-30),
+	/*artificialZeroYaw(),
+	drive(full_rotation * 2),
+	nice_rotation(-45),
+	drive(full_rotation * 3.8),
+	nice_rotation(0),
+	output("DONE"),*/
+	artificialZeroYaw(),
+	enable_led(true),
+	drive_power(0.3),
+	enable_led(true),
+	wait_until(touching_white()),
+	enable_led(false),
+	drive_power(0),
+	output("testing"),
+	nice_rotation(0),
+	drive(-400),
+	nice_rotation(0),
+	output("preif"),
+	_if("blue?", not(beacon_blue())),
+		output("not blue-----------------"),
+		drive(-500),
+		nice_rotation(0),
+	_else("blue?"),
+		output("blue----------"),
+	_fi("blue?"),
+	
+	output("about to press button"),
+	button_presser(2300),
+	button_presser(-2300),
+	nice_rotation(0),
+	drive(-2300, false),
+	nice_rotation(0),
+	drive_power(-0.3),
+	output("waiting for white"),
+	enable_led(true),
+	wait_until(touching_white()),
+	enable_led(false),
+	drive_power(0),
+	nice_rotation(0),
+	drive(300),
+	nice_rotation(0),
+	_if("blue2?", not(beacon_blue())),
+		drive(-600),
+		nice_rotation(0),
+		output("not blue2----------------"),
+	_else("blue2?"),
+		output("blue2------------"),
+	_fi("blue2?"),
+	output("about to press button"),
+	button_presser(2700),
+	button_presser(-2700),
+	exit(),
+	drive(3000),
+	nice_rotation(-90),
+	drive(-3000), //-2500
+	//drive(3000),
+	nice_rotation(45),
+	drive(2000),
+];
+
+function artificialZeroYaw() {
+	return function() {
+		yawChange = navx.getYaw();
+		return function() {
+			next();
+			return true;
+		};
+	};
+}
+
+var yawChange = -102.44;
+
+function yaw() {
+	var yaw = navx.getYaw();
+	yaw -= yawChange;
+	if(yaw < 0) yaw += 360;
+	yaw %= 360;
+	yaw = fix_angle(yaw);
+	yaw %= 360;
+	return yaw;
+}
+
+function nice_rotation(theta) {
+	var continuousRoundsCompleted = 0;
+	return function() {
+		server.print("Running nice rotation");
+		set_run_using_encoder();
+		var target = (theta)%360;
+		var whereToGoOriginal = 
+getCircleStuff(fix_angle(yaw()), target);
+		server.print("Where to go original: " + 
+JSON.stringify(whereToGoOriginal));
+		return function() {
+			var whereToGo = 
+getCircleStuff(fix_angle(yaw()), target);
+
+			
+//server.print((Math.abs(fix_angle(yaw()) - 
+//target)%360) + " " + whereToGoOriginal.dist);
+			var completedFrac = 
+(Math.abs(fix_angle(yaw()) - 
+target)%360)/whereToGoOriginal.dist * 0.8;
+			//server.print(completedFrac);
+			var power = Math.max(0.02, 
+Math.min(completedFrac, 0.1) * 0.8);
+
+			var left = (target - 
+fix_angle(yaw()))%360;
+			
+//server.print((Math.round(left*100)/100) + " " + 
+//(Math.round(100*completedFrac)/100));
+
+			forAllMotors(function(m) 
+{m.setPower(whereToGo.orientation ? -power : power);});
+
+			var angleTolerance = 1.5;
+			
+if(closeInProximity(fix_angle(yaw()), target, 
+angleTolerance)) {
+				++continuousRoundsCompleted;
+				
+//server.print(continuousRoundsCompleted);
+				if(continuousRoundsCompleted > 
+10) {
+					server.print("theta: " + fix_angle(yaw()) + " target: " + target + " angleTolerance: " + angleTolerance);
+					
+forAllMotors(function(m) {m.setPower(0);});
+					next();
+					return true;
+				}
+			} else {
+				continuousRoundsCompleted = 0;
+			}
+			return false;
+		};
+	};
+}
+
+function closeInProximity(theta0, theta1, dist) {
+	var diff = Math.abs((theta0 - theta1)) % 360;
+	if(diff < 0) {
+		diff += 360;
+	}
+	if(diff <= dist) return true;
+	diff = -diff;
+	diff += 360;
+	if(diff <= dist) return true;
+	return false;
+}
+
+function getCircleStuff(theta0, theta1) {
+	var dt0 = theta0 - theta1;
+	var dt1 = -dt0;
+	dt0 %= 360;
+	dt1 %= 360;
+
+	var flip0 = false;
+	var flip1 = false;
+	if(dt0 < 0) {
+		dt0 += 360;
+		flip0 = true;
+	}
+	if(dt1 < 0) {
+		dt1 += 360;
+		flip1 = true;
+	}
+
+	if(dt0 < dt1) {
+		var end = (theta0 - dt0)%360;
+		if(end < 0) {
+			end += 360;
+		}
+		return {
+			orientation: !flip0 && !(theta0 > 
+theta1),
+			dist: dt0
+		};
+	} else {
+		var end = (theta0 - dt1)%360;
+		if(end < 0) {
+			end += 360;
+		}
+		return {
+			orientation: ((theta0 < theta1) ^ 
+flip1) == 1,
+			dist: dt1
+		};
+	}
+}
+
+function fix_angle(theta) {
+	return theta < 0 ? 360 + theta : theta;
+}
+
+/*____	_____	____	_____	____ 
+ (	_ \(	_	)(	_ \(	_	)(_	_)
+	)	 / )(_)(	) _ < )(_)(	 )(	
+ (_)\_)(_____)(____/(_____) (__) 
+*/
+
+function button_presser(dist) {
+	return function() {
+		return build_button_presser(dist);
+	};
+}
+
+function strafe_power(direction) {
+	return function() {
+		set_run_using_encoder();
+		var ptr = direction;
+		forAllMotors(function(m) {
+			m.setPower(ptr); ptr=-ptr;
+		});
+		next();
+	};
+}
+
+function rotate_power(power) {
+	return function() {
+		set_run_using_encoder();
+		forAllMotors(function(m) {
+			m.setPower(power);
+		});
+		next();
+	};
+}
+
+function drive_power(power) {
+	return function() {
+		set_run_using_encoder();
+		var ptr = power;
+		var counter = 0;
+		forAllMotors(function(m) {
+			m.setPower(ptr);
+			if(++counter == 2) {
+				ptr = -ptr;
+			}
+		});
+		next();
+	};
+}
+
+function driven_forward(ticks) {
+	return function() {
+		var lbc = left_back.getCurrentPosition();
+		var lfc = left_front.getCurrentPosition();
+		var rbc = right_back.getCurrentPosition();
+		var rfc = right_front.getCurrentPosition(); 
+//lf rbc
+		return function() {
+			var ret = 
+Math.abs(left_back.getCurrentPosition() - lbc) >= ticks &&
+				
+Math.abs(left_front.getCurrentPosition() - lfc) >= ticks &&
+				
+Math.abs(right_back.getCurrentPosition() - rbc) >= ticks &&
+				
+Math.abs(right_front.getCurrentPosition() - rfc) >= ticks;
+			if(ret) next();
+			return ret;
+		};
+	};
+}
+
+function build_button_presser(dist) { //dist is in milliseconds. positive = out, negative = in
+	dist = -dist; //so that positive == out
+	arm.setPower(dist > 0 ? 1 : -1);
+	var oldTime = (new Date()).getTime();
+	return function() {
+		var currentTime = (new Date()).getTime();
+		var ret = (currentTime-oldTime) >= 
+Math.abs(dist);
+		if(ret) {
+			next();
+			arm.setPower(0);
+		}
+		return ret;
+	};
+}
+
+function touching_white() {
+	return function() {
+		return function() {
+			return bottom.red() > 10;
+		};
+	};
+}
+
+function exit() {
+	return function() {
+		jmp(-1);
+	};
+}
+
+function near_beacon() {
+	return function() {
+		return function() {
+			var ret = colors.red() >= 1 ||
+				  colors.blue() >= 1;
+			if(ret) server.print("--NEAR--");
+			return ret;
+		};
+	};
+}
+
+function beacon_color_unknown() {
+	return function() {
+		return function() {
+			server.print('    blue: ' + 
+colors.blue());
+			server.print('    red : ' + 
+colors.red());
+			return colors.blue() == colors.red();
+		};
+	};
+}
+
+function sleep(sec) {
+	return function() {
+		var start = (new Date()).getTime();
+		return function() {
+			var cur = (new Date()).getTime();
+			var ret = (cur-start) >= sec;
+			if(ret) next();
+			return ret;
+		};
+	};
+}
+
+function wait(sec) {
+	return function() {
+		var start = (new Date()).getTime();
+		return function() {
+			var cur = (new Date()).getTime();
+			var ret = (cur-start) >= sec;
+			return ret;
+		};
+	};
+}
+
+function beacon_blue() {
+	return function() {
+		return function() {
+			return colors.blue() > colors.red();
+		};
+	};
+}
+
+function beacon_red() {
+	return function() {
+		return function() {
+			return colors.red() > colors.blue();
+		};
+	};
+}
+
+function enable_led(value) {
+	return function() {
+		bottom.enableLed(value);
+		next();
+	};
+}
+
+function enable_top_led(value) {
+	return function() {
+		colors.enableLed(value);
+		next();
+	};
+}
+
+//todo cancel the fade crap, just float
+//and then get the rest done
+var fadescale = 1/Math.log(11);
+function fade_in_exp(current, max, fade) {
+	if(current < 0 || current > max) {
+		return 0;
+	} else if(current < fade) {
+		//ease in
+		return fadescale*Math.log(10*(current/fade)+1);
+	} else if(current > max-fade) {
+		//ease out
+		var x = (1-(current-(max-fade)));
+		return fadescale*Math.log(10*(x/fade)+1);
+	} else {
+		return 1;
+	}
+}
+
+function fade_in_linear(current, max, fade) {
+	if(current < 0 || current > max) {
+		return 0;
+	} else if(current < fade) {
+		return current/fade;
+	} else if(current > max-fade) {
+		return (fade-(current-(max-fade)))/fade;
+	} else {
+		return 1;
+	}
+}
+
+function set_run_to_position() {
+	zero_motors();
+	forAllMotors(function(self) {
+		
+self.setMode(hardware.DcMotor.RunMode.RUN_TO_POSITION);
+	});
+}
+
+function set_run_using_encoder() {
+	zero_motors();
+	forAllMotors(function(self) {
+		
+self.setMode(hardware.DcMotor.RunMode.RUN_USING_ENCODER);
+	});
+}
+
+function drive(ticks, run) {
+	return function() {
+		return build_command(ticks, ticks, -ticks, 
+-ticks, run);
+	};
+}
+
+function strafe(ticks) {
+	return function() {
+		return build_command(ticks, -ticks, ticks, 
+-ticks);
+	};
+}
+
+function rotate(angle) {
+	var turnAmount = ninety_degree_angle/90 * angle;
+	return function() {
+		return build_command(turnAmount, turnAmount, 
+turnAmount, turnAmount);
+	};
+}
+
+/*function build_command(lb, lf, rb, rf) {
+	forAllMotors(function(motor) {
+		
+motor.setMode(hardware.DcMotor.RunMode.RUN_TO_POSITION);
+	});
+	//c = current
+	var lbc = left_back.getCurrentPosition();
+	var lfc = left_front.getCurrentPosition();
+	var rbc = right_back.getCurrentPosition();
+	var rfc = right_front.getCurrentPosition();
+	left_back.setTargetPosition(lb + lbc);
+	left_front.setTargetPosition(lf + lfc);
+	right_back.setTargetPosition(rb + rbc);
+	right_front.setTargetPosition(rf + rfc);
+	//p = power
+	var power = 1; //max
+	var lfp = (lf > 0 ? power : -power);
+	var lbp = (lb > 0 ? power : -power);
+	var rbp = (rb > 0 ? power : -power);
+	var rfp = (rf > 0 ? power : -power);
+	//a = abs
+	var lba = Math.abs(lb);
+	var lfa = Math.abs(lf);
+	var rba = Math.abs(rb);
+	var rfa = Math.abs(rf);
+	var fade_in_div = 3;
+	//fi = fade in
+	var lbfi = lba/fade_in_div;
+	var lffi = lfa/fade_in_div;
+	var rbfi = rba/fade_in_div;
+	var rffi = rfa/fade_in_div;
+	var minPower = 0.4;
+	var scale = 1-minPower;
+	return function() {
+		//d = difference
+		var lbd = 
+Math.abs(left_back.getCurrentPosition() - lbc);
+		var lfd = 
+Math.abs(left_front.getCurrentPosition() - lfc);
+		var rbd = 
+Math.abs(right_back.getCurrentPosition() - rbc);
+		var rfd = 
+Math.abs(right_front.getCurrentPosition() - rfc);
+		//server.print('fade_in(' + lbd + ', ' + lba + 
+', ' + lbfi + ')');
+		//server.print('fade ' + fade_in_linear(lbd, 
+lba, lbfi));
+		
+left_back.setPower(lbp*(scale*(fade_in_linear(lbd, lba, 
+lbfi))+minPower));
+		
+left_front.setPower(lfp*(scale*(fade_in_linear(lfd, lfa, 
+lffi))+minPower));
+		
+right_back.setPower(rbp*(scale*(fade_in_linear(rbd, rba, 
+rbfi))+minPower));
+		
+right_front.setPower(rfp*(scale*(fade_in_linear(rfd, rfa, 
+rffi))+minPower));
+		var res = lbd >= lba &&
+				 lfd >= lfa &&
+				 rbd >= rba &&
+				 rfd >= rfa;
+		if(res) {
+			next();
+		}
+		return res;
+	};
+}*/
+
+function build_command(lb, lf, rb, rf, zero) {
+	if(typeof zero === 'undefined' || zero) {
+		zero_motors();
+	}
+	forAllMotors(function(motor) {
+		
+motor.setMode(hardware.DcMotor.RunMode.RUN_TO_POSITION);
+	});
+	var lbc = left_back.getCurrentPosition();
+	var lfc = left_front.getCurrentPosition();
+	var rbc = right_back.getCurrentPosition();
+	var rfc = right_front.getCurrentPosition();
+	left_back.setTargetPosition(lb + lbc);
+	left_front.setTargetPosition(lf + lfc);
+	right_back.setTargetPosition(rb + rbc);
+	right_front.setTargetPosition(rf + rfc);
+	var power = 0.5;
+	left_back.setPower(lb > 0 ? power : -power);
+	left_front.setPower(lf > 0 ? power : -power);
+	right_back.setPower(rb > 0 ? power : -power);
+	right_front.setPower(rf > 0 ? power : -power);
+	return function() {
+		left_back.setPower(lb > 0 ? power : -power);
+		left_front.setPower(lf > 0 ? power : -power);
+		right_back.setPower(rb > 0 ? power : -power);
+		right_front.setPower(rf > 0 ? power : -power);
+		var lbd = 
+Math.abs(left_back.getCurrentPosition() - lbc);
+		var lfd = 
+Math.abs(left_front.getCurrentPosition() - lfc);
+		var rbd = 
+Math.abs(right_back.getCurrentPosition() - rbc);
+		var rfd = 
+Math.abs(right_front.getCurrentPosition() - rfc);
+		
+		var arr = [Math.abs(lbd - Math.abs(lb)) < 10,
+			  Math.abs(lfd - Math.abs(lf)) < 10,
+			  Math.abs(rbd - Math.abs(rb)) < 10,
+			  Math.abs(rfd - Math.abs(rf)) < 10];
+		var ctr = 0;
+		if(arr[0]) ctr++;
+		if(arr[1]) ctr++;
+		if(arr[2]) ctr++;
+		if(arr[3]) ctr++;
+
+		ret = ctr > 2; //greater than 2 wheels made it
+		if(ret) {
+			//server.print("left_back desired: " + (lb + lbc) + " current: " + left_back.getCurrentPosition());
+			next();
+		}
+		return ret;
+	};
+}
+
+/*___	_____	_	_	____	____	_____	__	 
+ / __)(	_	)( \( )(_	_)(	_ \(	_	)(	
+)	
+( (__	)(_)(	)	(	 )(	 )	 / )(_)(	
+)(__ 
+ \___)(_____)(_)\_) (__) (_)\_)(_____)(____)
+*/
+function init() {
+	//get motors
+	left_back = hardwareMap.dcMotor.get("left_back");
+	left_front = hardwareMap.dcMotor.get("left_front");
+	right_back = hardwareMap.dcMotor.get("right_back");
+	right_front = hardwareMap.dcMotor.get("right_front");
+	
+	//get & initialize color sensors
+	colors = hardwareMap.colorSensor.get("colors");
+	var addr = new hardware.I2cAddr.create8bit(0x6c);
+	colors.setI2cAddress(addr);
+	
+	bottom = hardwareMap.colorSensor.get("bottom");
+	var baddr = new hardware.I2cAddr.create8bit(0x3c);
+	bottom.setI2cAddress(baddr);
+	colors.enableLed(false);
+	bottom.enableLed(false);
+
+	//get range sensor
+	//range = hardwareMap.get("range");
+	//var caddr = new hardware.I2cAddr.create8bit(0x9c);
+	//range.setI2cAddress(caddr);
+	
+	//get & initialize servos
+	arm = hardwareMap.crservo.get("button_presser");
+	latch = hardwareMap.crservo.get("latch");
+	arm.setPower(0);
+	latch.setPower(0);
+	navx = 
+AHRS.getInstance(hardwareMap.deviceInterfaceModule.get("navx_controller"), 
+0, AHRS.DeviceDataType.kProcessedData);
+	
+	//initialize motors
+	forAllMotors(function(self) {
+		
+self.setZeroPowerBehavior(hardware.DcMotor.ZeroPowerBehavior.FLOAT);
+	});
+	resetMotors();
+	while(left_back.getCurrentPosition() != 0) {
+		server.print("Initializing...");
+	}
+	set_run_using_encoder();
+	commandIndex = 0;
+}
+
+function start() {
+	process();
+}
+
+var currentCommand = null;
+var dead = false;
+//var cpptr = 0;
+function loop() {
+	if(dead) return;
+	
+	//handle current command if it wants us to check up on it
+	if(currentCommand !== null) {
+		if(currentCommand()) {
+			currentCommand = null;
+		}
+		return;
+	}
+	
+	var cmd = commands[commandIndex];
+	if(typeof cmd == 'undefined') {
+		stop();
+		server.print("Dead");
+		dead = true;
+		return;
+	}
+	var cmdres = cmd();
+	//cpptr++;
+	//if(cpptr % 50 == 0) {
+	//	server.print(typeof cmdres);
+	//}
+	if(typeof cmdres == 'function') {
+		currentCommand = cmdres;
+	}
+}
+
+function stop() {
+	zero_motors();
+	arm.setPower(0);
+	colors.enableLed(false);
+	bottom.enableLed(false);
+	set_run_using_encoder();
+}
+
+//processor: not strictly control
+function process() {
+	var loops = {};
+	//log all loops
+	for(var i = 0; i < commands.length; i++) {
+		if(commands[i].name == 'loop_anon') {
+			loops[commands[i].loopname] = i;
+		}
+	}
+	//find matching ends and connect them with loops
+	for(i = 0; i < commands.length; i++) {
+		if(commands[i].name == 'end_anon') {
+			commands[i].jumpindex = 
+loops[commands[i].loopname];
+			
+commands[loops[commands[i].loopname]].jumpindex = i+1;
+		}
+	}
+	
+	//make log of all ifs, elses, and fis
+	var ifs = {};
+	var elses = {};
+	var fis = {};
+	for(i = 0; i < commands.length; i++) {
+		if(commands[i].name == 'if_anon') {
+			ifs[commands[i].ifname] = i;
+		} else if(commands[i].name == 'else_anon') {
+			elses[commands[i].elsename] = i;
+		} else if(commands[i].name == 'fi_anon') {
+			fis[commands[i].finame] = i;
+		}
+	}
+	
+	//loop through ifs
+	for(var key in ifs) {
+		//skip loop if the property is from prototype
+		if(!ifs.hasOwnProperty(key)) continue;
+		
+		if(typeof elses[key] !== 'undefined') {
+			//there is a corresponding else
+			commands[ifs[key]].jumpindex = 
+elses[key]+1;
+			if(typeof fis[key] !== 'undefined') {
+				commands[elses[key]].jumpindex 
+= fis[key]+1;
+			} else {
+				throw("Unmatched if/else with fi.");
+			}
+		} else if(typeof fis[key] !== 'undefined') {
+			//there is a corresponding fi
+			commands[ifs[key]].jumpindex = 
+fis[key]+1;
+		} else {
+			throw("Unmatched if with fi");
+		}
+	}
+}
+
+/*__	__	_____	____	_____	____		__	
+__	____	____	__	 
+ (	\/	)(	_	)(_	_)(	_	)(	
+_ \	(	)(	)(_	_)(_	_)(	)	
+	)		(	)(_)(	 )(	 )(_)(	)	 
+/	 )(__)(	 )(	 _)(_	)(__ 
+ (_/\/\_)(_____) (__) (_____)(_)\_)	(______) (__) 
+(____)(____)
+*/
+function forAllMotors(operation) {
+	operation(left_back);
+	operation(left_front);
+	operation(right_back);
+	operation(right_front);
+}
+
+function resetMotors() {
+	arm.setPower(0);
+	forAllMotors(function(self) {
+		
+self.setMode(hardware.DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+	});
+	resetting = true;
+}
+
+function zero_motors() {
+	forAllMotors(function(m) {
+		m.setPower(0);
+	});
+}
+
+/*___	 ___	____	____	____	____		__	
+__	____	____	__		___ 
+ / __) / __)(	_ \(_	_)(	_ \(_	_)	(	)(	
+)(_	_)(_	_)(	)	/ __)
+ \__ \( (__	)	 / _)(_	)___/	)(		 )(__)(	 
+)(	 _)(_	)(__ \__ \
+ (___/ \___)(_)\_)(____)(__)	 (__)	 (______) (__) 
+(____)(____)(___/
+*/
+function next() {
+	commandIndex++;
+}
+
+function not(thing) {
+	return function() {
+		var part = thing();
+		return function() {
+			var ret = !part();
+			return ret;
+		};
+	};
+}
+
+function run_once(tag, command) {
+	run_once_db[tag] = false;
+	return function() {
+		if(run_once_db[tag] == false) {
+			run_once_db[tag] = true;
+			var ret = command();
+			if(typeof ret !== 'undefined') {
+				return ret;
+			}
+		} else {
+			next();
+		}
+	};
+}
+
+function or(thing1, thing2) {
+	return function() {
+		var p1 = thing1();
+		var p2 = thing2();
+		return function() {
+			return p1() || p2();
+		};
+	};
+}
+
+function less(thing1, thing2) {
+	return function() {
+		var p1 = thing1();
+		var p2 = thing2();
+		return function() {
+			return p1() < p2();
+		};
+	};
+}
+
+function greater(thing1, thing2) {
+	return function() {
+		var p1 = thing1();
+		var p2 = thing2();
+		return function() {
+			return p1() < p2();
+		};
+	};
+}
+
+function and(thing1, thing2) {
+	return function() {
+		var p1 = thing1();
+		var p2 = thing2();
+		return function() {
+			return p1() && p2();
+		};
+	};
+}
+
+function make_predicate(thing) {
+	return function() {
+		return function() {
+			return thing();
+		};
+	};
+}
+
+function output(str) {
+	return function() {
+		server.print(str);
+		next();
+	};
+}
+
+function jmp(ind) {
+	commandIndex = ind;
+}
+
+function times(num) {
+	return function() {
+		var ctr = 0;
+		return function() {
+			return ctr++ < num;
+		};
+	};
+}
+
+function _while(str, condition, run_first_time) {
+	if(typeof run_first_time == 'undefined') {
+		run_first_time = false;
+	}
+	var ret = function loop_anon() {
+		ret.check = condition();
+		if(run_first_time) {
+			next();
+		} else {
+			if(ret.check() === true) {
+				next();
+			} else {
+				
+jmp(commands[commandIndex].jumpindex);
+			}
+		}
+	};
+	ret.loopname = str;
+	return ret;
+}
+
+function _if(str, condition) {
+	var ret = function if_anon() {
+		ret.check = condition();
+		if(ret.check() === true) {
+			next();
+		} else {
+			jmp(commands[commandIndex].jumpindex);
+		}
+	};
+	ret.ifname = str;
+	return ret;
+}
+
+function _else(str) {
+	var ret = function else_anon() {
+		jmp(commands[commandIndex].jumpindex);
+	};
+	ret.elsename = str;
+	return ret;
+}
+
+function _fi(str) {
+	var ret = function fi_anon() {
+		next();
+	};
+	ret.finame = str;
+	return ret;
+}
+
+function _done(str) {
+	var ret = function end_anon() {
+		var loopbegin = 
+commands[commandIndex].jumpindex;
+		var checker = commands[loopbegin].check;
+		if(checker !== undefined) {
+			if(!checker()) {
+				next();
+			} else {
+				jmp(loopbegin+1);
+			}
+		} else {
+			jmp(loopbegin);
+		}
+	};
+	ret.loopname = str;
+	return ret;
+}
+
+function run_predicate(predicate) {
+	return predicate()();
+}
+
+function wait_until(predicate) {
+	return function() {
+		var p = predicate();
+		return function() {
+			var ret = p();
+			if(ret) next();
+			return ret;
+		};
+	};
+}
+
+function reset_motors() {
+	return function() {
+		forAllMotors(function(self) {
+			
+self.setMode(hardware.DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+		});
+		return function() {
+			var ret = 
+left_back.getCurrentPosition() == 0;
+			if(ret) {
+				next();
+			}
+			return ret;
+		};
+	};
+}
+
+//FOR THE CONSOLE
+function t(power) {
+	forAllMotors(function(m) {
+		m.setPower(power);
+	});
+}
+
+function s(direction) {
+	var ptr = direction;
+	forAllMotors(function(m) {
+		m.setPower(ptr); ptr=-ptr;
+	});
+}
+
+function f(power) {
+	var counter = 0;
+	var ptr = power;
+	forAllMotors(function(m) {
+		m.setPower(ptr);
+		if(++counter == 2) {
+			ptr = -ptr;
+		}
+	});
+}
+
+
+
+
+
+
