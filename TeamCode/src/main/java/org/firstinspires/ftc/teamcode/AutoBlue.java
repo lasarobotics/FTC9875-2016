@@ -12,129 +12,9 @@ import org.mozilla.javascript.ScriptableObject;
  * Created by Russell on 11/23/2016.
  */
 
-@Autonomous(name = "auto-blue", group = "test")
+@Autonomous(name = "auto-blue")
 public class AutoBlue extends OpMode {
-    private static Script scriptObj;
-    private static volatile boolean context = false;
-
-    private class Script {
-        private Context cx;
-        private boolean inContext = false;
-        private ScriptableObject scope;
-        private final Object scriptLock = new Object();
-        private long threadId = -1;
-
-        public String callFunction(String name) {
-            synchronized (scriptLock) {
-                if (scope == null) {
-                    return "Null scope.";
-                }
-                Object obj = null;
-                try {
-                    obj = scope.get(name, scope);
-                    Function fct = (Function) obj;
-                    if (fct == null) {
-                        return "Function not found: " + name;
-                    }
-                    fct.call(cx, scope, scope, new Object[]{});
-                } catch (ClassCastException cce) {
-                    return "Function " + name + " is of type " + obj;
-                }
-                return null;
-            }
-        }
-
-        public Object evaluateString(String str, String name) {
-            if (cx == null) {
-                return null;
-            }
-            return cx.evaluateString(scope, str, name, 1, null);
-        }
-
-        //do not run me if a context already exists
-        private void createContext() {
-            synchronized (scriptLock) {
-                if (inContext) {
-                    return;
-                }
-                threadId = Thread.currentThread().getId();
-                cx = Context.enter();
-                context = true;
-                cx.setOptimizationLevel(-1); //make compatible with Android
-
-                scope = cx.initStandardObjects();
-                ScriptableObject.putProperty(scope, "gamepad1", Context.javaToJS(gamepad1, scope));
-                ScriptableObject.putProperty(scope, "gamepad2", Context.javaToJS(gamepad2, scope));
-                ScriptableObject.putProperty(scope, "hardwareMap", Context.javaToJS(hardwareMap, scope));
-                ScriptableObject.putProperty(scope, "server", Context.javaToJS(new ClientCodeUtilities(), scope));
-                inContext = true;
-            }
-        }
-
-        public void clearContext() {
-            if (!inContext) return;
-            if (Thread.currentThread().getId() != threadId) return; //not running on context thread
-            if (context) {
-                Context.exit();
-                context = false;
-            }
-            createContext();
-            inContext = false;
-        }
-    }
-
-    public class ClientCodeUtilities {
-        public void print(String msg) {
-            System.out.println(msg);
-        }
-    }
-
-    @Override
-    public void init() {
-        if (scriptObj == null) {
-            scriptObj = new Script();
-        }
-        scriptObj.createContext();
-        scriptObj.evaluateString(scriptLiteral, "<offline>");
-        if (scriptObj.callFunction("init") != null) {
-            throw new RuntimeException("Unable to init");
-        }
-    }
-
-    @Override
-    public void start() {
-        if (scriptObj.callFunction("start") != null) {
-            throw new RuntimeException("Unable to start");
-        }
-    }
-
-    @Override
-    public void stop() {
-        if (scriptObj.callFunction("stop") != null) {
-            throw new RuntimeException("Unable to stop");
-        }
-        scriptObj.clearContext();
-    }
-
-    private void smallDelay() {
-        try {
-            Thread.sleep(10);
-        } catch (InterruptedException ie) {
-            System.out.println("Interrupted.");
-        }
-    }
-
-    @Override
-    public void loop() {
-        String err = scriptObj.callFunction("loop");
-        if (err != null) {
-            System.out.println("Unable to loop!");
-            scriptObj.callFunction("stop");
-            throw new RuntimeException("Unable to loop: " + err);
-        }
-    }
-
-    private static final String scriptLiteral = "var left_back, left_front, right_back, right_front, arm, latch, \n" +
+    private static final String src = "var left_back, left_front, right_back, right_front, arm, latch, \n" +
             "bottom, colors, range;\n" +
             "var hardware = Packages.com.qualcomm.robotcore.hardware;\n" +
             "var tol = 0.05;\n" +
@@ -1252,4 +1132,20 @@ public class AutoBlue extends OpMode {
             "\n" +
             "\n" +
             "\n";
+    Interpreter interpreter = new Interpreter(this, src);
+
+    @Override
+    public void init() {
+        interpreter.init();
+    }
+
+    @Override
+    public void loop() {
+        interpreter.loop();
+    }
+
+    @Override
+    public void stop() {
+        interpreter.stop();
+    }
 }
