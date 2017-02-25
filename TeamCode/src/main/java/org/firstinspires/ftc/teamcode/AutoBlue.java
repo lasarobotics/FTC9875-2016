@@ -1,6 +1,8 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.eventloop.opmode.*;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.Function;
@@ -10,10 +12,10 @@ import org.mozilla.javascript.ScriptableObject;
  * Created by Russell on 11/23/2016.
  */
 
-@Disabled
-@Autonomous(name = "wb-blue", group = "test")
-public class WinterBreakAutoBlue extends OpMode {
+@Autonomous(name = "auto-blue", group = "test")
+public class AutoBlue extends OpMode {
     private static Script scriptObj;
+    private static volatile boolean context = false;
 
     private class Script {
         private Context cx;
@@ -53,10 +55,11 @@ public class WinterBreakAutoBlue extends OpMode {
         private void createContext() {
             synchronized (scriptLock) {
                 if (inContext) {
-                    clearContext();
+                    return;
                 }
                 threadId = Thread.currentThread().getId();
                 cx = Context.enter();
+                context = true;
                 cx.setOptimizationLevel(-1); //make compatible with Android
 
                 scope = cx.initStandardObjects();
@@ -71,7 +74,10 @@ public class WinterBreakAutoBlue extends OpMode {
         public void clearContext() {
             if (!inContext) return;
             if (Thread.currentThread().getId() != threadId) return; //not running on context thread
-            Context.exit();
+            if (context) {
+                Context.exit();
+                context = false;
+            }
             createContext();
             inContext = false;
         }
@@ -128,18 +134,21 @@ public class WinterBreakAutoBlue extends OpMode {
         }
     }
 
-    private static final String scriptLiteral = "var left_back, left_front, right_back, right_front, arm, latch, bottom, colors, range;\n" +
+    private static final String scriptLiteral = "var left_back, left_front, right_back, right_front, arm, latch, \n" +
+            "bottom, colors, range;\n" +
             "var hardware = Packages.com.qualcomm.robotcore.hardware;\n" +
             "var tol = 0.05;\n" +
             "var commandIndex = 0;\n" +
             "var ninety_degree_angle = 1650; //TODO get better at this\n" +
             "var full_rotation = 1440;\n" +
-            "var CENTIMETERS = Packages.org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit.CM;\n" +
+            "var CENTIMETERS = \n" +
+            "Packages.org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit.CM;\n" +
             "var run_once_db = {};\n" +
-            "var red = false;\n" +
+            "var AHRS = Packages.com.kauailabs.navx.ftc.AHRS;\n" +
             "\n" +
             "var commands = [\n" +
-            "\t/*rotate(-180), //test out motor ability to return to start\n" +
+            "\t/*rotate(-180), //test out motor ability to return to \n" +
+            "start\n" +
             "\tdrive(1000),\n" +
             "\trotate(90),\n" +
             "\tdrive(500),\n" +
@@ -150,13 +159,13 @@ public class WinterBreakAutoBlue extends OpMode {
             "\trotate(-90),\n" +
             "\tdrive(1000),\n" +
             "\texit(),*/\n" +
-            "\tdrive(1600),\n" +
+            "\t/*drive(1600),\n" +
             "\tsleep(300),\n" +
-            "\trotate(90),\n" +
+            "\tnice_rotation(90),\n" +
             "\tsleep(300),\n" +
             "\tdrive(5900),\n" +
             "\tsleep(300),\n" +
-            "\trotate(-90),\n" +
+            "\tnice_rotation(-90),\n" +
             "\treset_motors(),\n" +
             "\tsleep(300),\n" +
             "\tenable_led(true),\n" +
@@ -167,22 +176,33 @@ public class WinterBreakAutoBlue extends OpMode {
             "\t\tdrive_power(0.2),\n" +
             "\t\toutput(\"waiting until touching white\"),\n" +
             "\t\twait_until(touching_white()),\n" +
-            "\t\t_while(\"nearbeacondoublecheck\", not(near_beacon())),\n" +
+            "\t\t_while(\"nearbeacondoublecheck\", \n" +
+            "not(near_beacon())),\n" +
             "\t\t\toutput(\"strafing\"),\n" +
             "\t\t\tenable_top_led(true),\n" +
             "\t\t\tstrafe_power(-0.25),\n" +
-            "\t\t\t_while(\"stay_on_white\", not(near_beacon())),\n" +
-            "\t\t\t\t_if(\"off\", not(touching_white())),\n" +
-            "\t\t\t\t\toutput(\"    not touching white\"),\n" +
+            "\t\t\t_while(\"stay_on_white\", \n" +
+            "not(near_beacon())),\n" +
+            "\t\t\t\t_if(\"off\", \n" +
+            "not(touching_white())),\n" +
+            "\t\t\t\t\toutput(\"    not \n" +
+            "touching white\"),\n" +
             "\t\t\t\t\tdrive_power(-0.1),\n" +
-            "\t\t\t\t\twait_until(or(touching_white(), driven_forward(200))),\n" +
-            "\t\t\t\t\toutput(\"    wait done\"),\n" +
-            "\t\t\t\t\t_if(\"twinner\", not(touching_white())),\n" +
-            "\t\t\t\t\t\toutput(\"        not touching white\"),\n" +
-            "\t\t\t\t\t\tdrive_power(0.1),\n" +
-            "\t\t\t\t\t\twait_until(touching_white()),\n" +
+            "\t\t\t\t\t\n" +
+            "wait_until(or(touching_white(), driven_forward(200))),\n" +
+            "\t\t\t\t\toutput(\"    wait \n" +
+            "done\"),\n" +
+            "\t\t\t\t\t_if(\"twinner\", \n" +
+            "not(touching_white())),\n" +
+            "\t\t\t\t\t\toutput(\"        \n" +
+            "not touching white\"),\n" +
+            "\t\t\t\t\t\t\n" +
+            "drive_power(0.1),\n" +
+            "\t\t\t\t\t\t\n" +
+            "wait_until(touching_white()),\n" +
             "\t\t\t\t\t_fi(\"twinner\"),\n" +
-            "\t\t\t\t\toutput(\"    going back to strafing\"),\n" +
+            "\t\t\t\t\toutput(\"    going back \n" +
+            "to strafing\"),\n" +
             "\t\t\t\t\tstrafe_power(-0.25),\n" +
             "\t\t\t\t_fi(\"off\"),\n" +
             "\t\t\t_done(\"stay_on_white\"),\n" +
@@ -209,7 +229,7 @@ public class WinterBreakAutoBlue extends OpMode {
             "\t\t\t\tsleep(200),\n" +
             "\t\t\t\toutput(\"    strafe\"),\n" +
             "\t\t\t\tstrafe(-150),*/\n" +
-            "\t\t\t\tdrive(-50),\n" +
+            "\t\t\t\t/*drive(-50),\n" +
             "\t\t\t\treset_motors(),\n" +
             "\t\t\t\tbutton_presser(1000),\n" +
             "\t\t\t\tbutton_presser(-1000),\n" +
@@ -238,17 +258,210 @@ public class WinterBreakAutoBlue extends OpMode {
             "\t\treset_motors(),\n" +
             "\t\tsleep(200),\n" +
             "\t\trun_once(\"driveafterfirstbeacon\", drive(1000)),\n" +
-            "\t\toutput(\"---------DONE with one beacon----------\"),\n" +
+            "\t\toutput(\"---------DONE with one \n" +
+            "beacon----------\"),\n" +
             "\t_done(\"toplevel\"),\n" +
             "\tdrive_power(0.0),\n" +
             "\tenable_led(false),\n" +
-            "\tsleep(300),\n" +
+            "\tsleep(300),t\n" +
             "\tdrive(-4000),\n" +
-            "\trotate(-90),\n" +
+            "\tnice_rotation(-90),\n" +
             "\tdrive(2200),\n" +
-            "\trotate(-20),\n" +
-            "\trotate(20),\n" +
+            "\tnice_rotation(-20),*/\n" +
+            "\t//nice_rotation(-30),\n" +
+            "\t/*artificialZeroYaw(),\n" +
+            "\tdrive(full_rotation * 2),\n" +
+            "\tnice_rotation(-45),\n" +
+            "\tdrive(full_rotation * 3.8),\n" +
+            "\tnice_rotation(0),\n" +
+            "\toutput(\"DONE\"),*/\n" +
+            "\tartificialZeroYaw(),\n" +
+            "\tenable_led(true),\n" +
+            "\tdrive_power(0.3),\n" +
+            "\tenable_led(true),\n" +
+            "\twait_until(touching_white()),\n" +
+            "\tenable_led(false),\n" +
+            "\tdrive_power(0),\n" +
+            "\toutput(\"testing\"),\n" +
+            "\tnice_rotation(0),\n" +
+            "\tdrive(-400),\n" +
+            "\tnice_rotation(0),\n" +
+            "\toutput(\"preif\"),\n" +
+            "\t_if(\"blue?\", not(beacon_blue())),\n" +
+            "\t\toutput(\"not blue-----------------\"),\n" +
+            "\t\tdrive(-500),\n" +
+            "\t\tnice_rotation(0),\n" +
+            "\t_else(\"blue?\"),\n" +
+            "\t\toutput(\"blue----------\"),\n" +
+            "\t_fi(\"blue?\"),\n" +
+            "\t\n" +
+            "\toutput(\"about to press button\"),\n" +
+            "\tbutton_presser(2300),\n" +
+            "\tbutton_presser(-2300),\n" +
+            "\tnice_rotation(0),\n" +
+            "\tdrive(-2300, false),\n" +
+            "\tnice_rotation(0),\n" +
+            "\tdrive_power(-0.3),\n" +
+            "\toutput(\"waiting for white\"),\n" +
+            "\tenable_led(true),\n" +
+            "\twait_until(touching_white()),\n" +
+            "\tenable_led(false),\n" +
+            "\tdrive_power(0),\n" +
+            "\tnice_rotation(0),\n" +
+            "\tdrive(300),\n" +
+            "\tnice_rotation(0),\n" +
+            "\t_if(\"blue2?\", not(beacon_blue())),\n" +
+            "\t\tdrive(-600),\n" +
+            "\t\tnice_rotation(0),\n" +
+            "\t\toutput(\"not blue2----------------\"),\n" +
+            "\t_else(\"blue2?\"),\n" +
+            "\t\toutput(\"blue2------------\"),\n" +
+            "\t_fi(\"blue2?\"),\n" +
+            "\toutput(\"about to press button\"),\n" +
+            "\tbutton_presser(2700),\n" +
+            "\tbutton_presser(-2700),\n" +
+            "\texit(),\n" +
+            "\tdrive(3000),\n" +
+            "\tnice_rotation(-90),\n" +
+            "\tdrive(-3000), //-2500\n" +
+            "\t//drive(3000),\n" +
+            "\tnice_rotation(45),\n" +
+            "\tdrive(2000),\n" +
             "];\n" +
+            "\n" +
+            "function artificialZeroYaw() {\n" +
+            "\treturn function() {\n" +
+            "\t\tyawChange = navx.getYaw();\n" +
+            "\t\treturn function() {\n" +
+            "\t\t\tnext();\n" +
+            "\t\t\treturn true;\n" +
+            "\t\t};\n" +
+            "\t};\n" +
+            "}\n" +
+            "\n" +
+            "var yawChange = -102.44;\n" +
+            "\n" +
+            "function yaw() {\n" +
+            "\tvar yaw = navx.getYaw();\n" +
+            "\tyaw -= yawChange;\n" +
+            "\tif(yaw < 0) yaw += 360;\n" +
+            "\tyaw %= 360;\n" +
+            "\tyaw = fix_angle(yaw);\n" +
+            "\tyaw %= 360;\n" +
+            "\treturn yaw;\n" +
+            "}\n" +
+            "\n" +
+            "function nice_rotation(theta) {\n" +
+            "\tvar continuousRoundsCompleted = 0;\n" +
+            "\treturn function() {\n" +
+            "\t\tserver.print(\"Running nice rotation\");\n" +
+            "\t\tset_run_using_encoder();\n" +
+            "\t\tvar target = (theta)%360;\n" +
+            "\t\tvar whereToGoOriginal = \n" +
+            "getCircleStuff(fix_angle(yaw()), target);\n" +
+            "\t\tserver.print(\"Where to go original: \" + \n" +
+            "JSON.stringify(whereToGoOriginal));\n" +
+            "\t\treturn function() {\n" +
+            "\t\t\tvar whereToGo = \n" +
+            "getCircleStuff(fix_angle(yaw()), target);\n" +
+            "\n" +
+            "\t\t\t\n" +
+            "//server.print((Math.abs(fix_angle(yaw()) - \n" +
+            "//target)%360) + \" \" + whereToGoOriginal.dist);\n" +
+            "\t\t\tvar completedFrac = \n" +
+            "(Math.abs(fix_angle(yaw()) - \n" +
+            "target)%360)/whereToGoOriginal.dist * 0.8;\n" +
+            "\t\t\t//server.print(completedFrac);\n" +
+            "\t\t\tvar power = Math.max(0.02, \n" +
+            "Math.min(completedFrac, 0.1) * 0.8);\n" +
+            "\n" +
+            "\t\t\tvar left = (target - \n" +
+            "fix_angle(yaw()))%360;\n" +
+            "\t\t\t\n" +
+            "//server.print((Math.round(left*100)/100) + \" \" + \n" +
+            "//(Math.round(100*completedFrac)/100));\n" +
+            "\n" +
+            "\t\t\tforAllMotors(function(m) \n" +
+            "{m.setPower(whereToGo.orientation ? -power : power);});\n" +
+            "\n" +
+            "\t\t\tvar angleTolerance = 1.5;\n" +
+            "\t\t\t\n" +
+            "if(closeInProximity(fix_angle(yaw()), target, \n" +
+            "angleTolerance)) {\n" +
+            "\t\t\t\t++continuousRoundsCompleted;\n" +
+            "\t\t\t\t\n" +
+            "//server.print(continuousRoundsCompleted);\n" +
+            "\t\t\t\tif(continuousRoundsCompleted > \n" +
+            "10) {\n" +
+            "\t\t\t\t\tserver.print(\"theta: \" + fix_angle(yaw()) + \" target: \" + target + \" angleTolerance: \" + angleTolerance);\n" +
+            "\t\t\t\t\t\n" +
+            "forAllMotors(function(m) {m.setPower(0);});\n" +
+            "\t\t\t\t\tnext();\n" +
+            "\t\t\t\t\treturn true;\n" +
+            "\t\t\t\t}\n" +
+            "\t\t\t} else {\n" +
+            "\t\t\t\tcontinuousRoundsCompleted = 0;\n" +
+            "\t\t\t}\n" +
+            "\t\t\treturn false;\n" +
+            "\t\t};\n" +
+            "\t};\n" +
+            "}\n" +
+            "\n" +
+            "function closeInProximity(theta0, theta1, dist) {\n" +
+            "\tvar diff = Math.abs((theta0 - theta1)) % 360;\n" +
+            "\tif(diff < 0) {\n" +
+            "\t\tdiff += 360;\n" +
+            "\t}\n" +
+            "\tif(diff <= dist) return true;\n" +
+            "\tdiff = -diff;\n" +
+            "\tdiff += 360;\n" +
+            "\tif(diff <= dist) return true;\n" +
+            "\treturn false;\n" +
+            "}\n" +
+            "\n" +
+            "function getCircleStuff(theta0, theta1) {\n" +
+            "\tvar dt0 = theta0 - theta1;\n" +
+            "\tvar dt1 = -dt0;\n" +
+            "\tdt0 %= 360;\n" +
+            "\tdt1 %= 360;\n" +
+            "\n" +
+            "\tvar flip0 = false;\n" +
+            "\tvar flip1 = false;\n" +
+            "\tif(dt0 < 0) {\n" +
+            "\t\tdt0 += 360;\n" +
+            "\t\tflip0 = true;\n" +
+            "\t}\n" +
+            "\tif(dt1 < 0) {\n" +
+            "\t\tdt1 += 360;\n" +
+            "\t\tflip1 = true;\n" +
+            "\t}\n" +
+            "\n" +
+            "\tif(dt0 < dt1) {\n" +
+            "\t\tvar end = (theta0 - dt0)%360;\n" +
+            "\t\tif(end < 0) {\n" +
+            "\t\t\tend += 360;\n" +
+            "\t\t}\n" +
+            "\t\treturn {\n" +
+            "\t\t\torientation: !flip0 && !(theta0 > \n" +
+            "theta1),\n" +
+            "\t\t\tdist: dt0\n" +
+            "\t\t};\n" +
+            "\t} else {\n" +
+            "\t\tvar end = (theta0 - dt1)%360;\n" +
+            "\t\tif(end < 0) {\n" +
+            "\t\t\tend += 360;\n" +
+            "\t\t}\n" +
+            "\t\treturn {\n" +
+            "\t\t\torientation: ((theta0 < theta1) ^ \n" +
+            "flip1) == 1,\n" +
+            "\t\t\tdist: dt1\n" +
+            "\t\t};\n" +
+            "\t}\n" +
+            "}\n" +
+            "\n" +
+            "function fix_angle(theta) {\n" +
+            "\treturn theta < 0 ? 360 + theta : theta;\n" +
+            "}\n" +
             "\n" +
             "/*____\t_____\t____\t_____\t____ \n" +
             " (\t_ \\(\t_\t)(\t_ \\(\t_\t)(_\t_)\n" +
@@ -303,12 +516,17 @@ public class WinterBreakAutoBlue extends OpMode {
             "\t\tvar lbc = left_back.getCurrentPosition();\n" +
             "\t\tvar lfc = left_front.getCurrentPosition();\n" +
             "\t\tvar rbc = right_back.getCurrentPosition();\n" +
-            "\t\tvar rfc = right_front.getCurrentPosition(); //lf rbc\n" +
+            "\t\tvar rfc = right_front.getCurrentPosition(); \n" +
+            "//lf rbc\n" +
             "\t\treturn function() {\n" +
-            "\t\t\tvar ret = Math.abs(left_back.getCurrentPosition() - lbc) >= ticks &&\n" +
-            "\t\t\t\tMath.abs(left_front.getCurrentPosition() - lfc) >= ticks &&\n" +
-            "\t\t\t\tMath.abs(right_back.getCurrentPosition() - rbc) >= ticks &&\n" +
-            "\t\t\t\tMath.abs(right_front.getCurrentPosition() - rfc) >= ticks;\n" +
+            "\t\t\tvar ret = \n" +
+            "Math.abs(left_back.getCurrentPosition() - lbc) >= ticks &&\n" +
+            "\t\t\t\t\n" +
+            "Math.abs(left_front.getCurrentPosition() - lfc) >= ticks &&\n" +
+            "\t\t\t\t\n" +
+            "Math.abs(right_back.getCurrentPosition() - rbc) >= ticks &&\n" +
+            "\t\t\t\t\n" +
+            "Math.abs(right_front.getCurrentPosition() - rfc) >= ticks;\n" +
             "\t\t\tif(ret) next();\n" +
             "\t\t\treturn ret;\n" +
             "\t\t};\n" +
@@ -321,7 +539,8 @@ public class WinterBreakAutoBlue extends OpMode {
             "\tvar oldTime = (new Date()).getTime();\n" +
             "\treturn function() {\n" +
             "\t\tvar currentTime = (new Date()).getTime();\n" +
-            "\t\tvar ret = (currentTime-oldTime) >= Math.abs(dist);\n" +
+            "\t\tvar ret = (currentTime-oldTime) >= \n" +
+            "Math.abs(dist);\n" +
             "\t\tif(ret) {\n" +
             "\t\t\tnext();\n" +
             "\t\t\tarm.setPower(0);\n" +
@@ -358,8 +577,10 @@ public class WinterBreakAutoBlue extends OpMode {
             "function beacon_color_unknown() {\n" +
             "\treturn function() {\n" +
             "\t\treturn function() {\n" +
-            "\t\t\tserver.print('    blue: ' + colors.blue());\n" +
-            "\t\t\tserver.print('    red : ' + colors.red());\n" +
+            "\t\t\tserver.print('    blue: ' + \n" +
+            "colors.blue());\n" +
+            "\t\t\tserver.print('    red : ' + \n" +
+            "colors.red());\n" +
             "\t\t\treturn colors.blue() == colors.red();\n" +
             "\t\t};\n" +
             "\t};\n" +
@@ -451,40 +672,45 @@ public class WinterBreakAutoBlue extends OpMode {
             "function set_run_to_position() {\n" +
             "\tzero_motors();\n" +
             "\tforAllMotors(function(self) {\n" +
-            "\t\tself.setMode(hardware.DcMotor.RunMode.RUN_TO_POSITION);\n" +
+            "\t\t\n" +
+            "self.setMode(hardware.DcMotor.RunMode.RUN_TO_POSITION);\n" +
             "\t});\n" +
             "}\n" +
             "\n" +
             "function set_run_using_encoder() {\n" +
             "\tzero_motors();\n" +
             "\tforAllMotors(function(self) {\n" +
-            "\t\tself.setMode(hardware.DcMotor.RunMode.RUN_USING_ENCODER);\n" +
+            "\t\t\n" +
+            "self.setMode(hardware.DcMotor.RunMode.RUN_USING_ENCODER);\n" +
             "\t});\n" +
             "}\n" +
             "\n" +
             "function drive(ticks, run) {\n" +
             "\treturn function() {\n" +
-            "\t\treturn build_command(ticks, ticks, -ticks, -ticks, run);\n" +
+            "\t\treturn build_command(ticks, ticks, -ticks, \n" +
+            "-ticks, run);\n" +
             "\t};\n" +
             "}\n" +
             "\n" +
             "function strafe(ticks) {\n" +
             "\treturn function() {\n" +
-            "\t\treturn build_command(ticks, -ticks, ticks, -ticks);\n" +
+            "\t\treturn build_command(ticks, -ticks, ticks, \n" +
+            "-ticks);\n" +
             "\t};\n" +
             "}\n" +
             "\n" +
             "function rotate(angle) {\n" +
-            "        var coefficient = red ? 1 : -1;\n" +
-            "\tvar turnAmount = coefficient * ninety_degree_angle/90 * angle;\n" +
+            "\tvar turnAmount = ninety_degree_angle/90 * angle;\n" +
             "\treturn function() {\n" +
-            "\t\treturn build_command(turnAmount, turnAmount, turnAmount, turnAmount);\n" +
+            "\t\treturn build_command(turnAmount, turnAmount, \n" +
+            "turnAmount, turnAmount);\n" +
             "\t};\n" +
             "}\n" +
             "\n" +
             "/*function build_command(lb, lf, rb, rf) {\n" +
             "\tforAllMotors(function(motor) {\n" +
-            "\t\tmotor.setMode(hardware.DcMotor.RunMode.RUN_TO_POSITION);\n" +
+            "\t\t\n" +
+            "motor.setMode(hardware.DcMotor.RunMode.RUN_TO_POSITION);\n" +
             "\t});\n" +
             "\t//c = current\n" +
             "\tvar lbc = left_back.getCurrentPosition();\n" +
@@ -516,16 +742,30 @@ public class WinterBreakAutoBlue extends OpMode {
             "\tvar scale = 1-minPower;\n" +
             "\treturn function() {\n" +
             "\t\t//d = difference\n" +
-            "\t\tvar lbd = Math.abs(left_back.getCurrentPosition() - lbc);\n" +
-            "\t\tvar lfd = Math.abs(left_front.getCurrentPosition() - lfc);\n" +
-            "\t\tvar rbd = Math.abs(right_back.getCurrentPosition() - rbc);\n" +
-            "\t\tvar rfd = Math.abs(right_front.getCurrentPosition() - rfc);\n" +
-            "\t\t//server.print('fade_in(' + lbd + ', ' + lba + ', ' + lbfi + ')');\n" +
-            "\t\t//server.print('fade ' + fade_in_linear(lbd, lba, lbfi));\n" +
-            "\t\tleft_back.setPower(lbp*(scale*(fade_in_linear(lbd, lba, lbfi))+minPower));\n" +
-            "\t\tleft_front.setPower(lfp*(scale*(fade_in_linear(lfd, lfa, lffi))+minPower));\n" +
-            "\t\tright_back.setPower(rbp*(scale*(fade_in_linear(rbd, rba, rbfi))+minPower));\n" +
-            "\t\tright_front.setPower(rfp*(scale*(fade_in_linear(rfd, rfa, rffi))+minPower));\n" +
+            "\t\tvar lbd = \n" +
+            "Math.abs(left_back.getCurrentPosition() - lbc);\n" +
+            "\t\tvar lfd = \n" +
+            "Math.abs(left_front.getCurrentPosition() - lfc);\n" +
+            "\t\tvar rbd = \n" +
+            "Math.abs(right_back.getCurrentPosition() - rbc);\n" +
+            "\t\tvar rfd = \n" +
+            "Math.abs(right_front.getCurrentPosition() - rfc);\n" +
+            "\t\t//server.print('fade_in(' + lbd + ', ' + lba + \n" +
+            "', ' + lbfi + ')');\n" +
+            "\t\t//server.print('fade ' + fade_in_linear(lbd, \n" +
+            "lba, lbfi));\n" +
+            "\t\t\n" +
+            "left_back.setPower(lbp*(scale*(fade_in_linear(lbd, lba, \n" +
+            "lbfi))+minPower));\n" +
+            "\t\t\n" +
+            "left_front.setPower(lfp*(scale*(fade_in_linear(lfd, lfa, \n" +
+            "lffi))+minPower));\n" +
+            "\t\t\n" +
+            "right_back.setPower(rbp*(scale*(fade_in_linear(rbd, rba, \n" +
+            "rbfi))+minPower));\n" +
+            "\t\t\n" +
+            "right_front.setPower(rfp*(scale*(fade_in_linear(rfd, rfa, \n" +
+            "rffi))+minPower));\n" +
             "\t\tvar res = lbd >= lba &&\n" +
             "\t\t\t\t lfd >= lfa &&\n" +
             "\t\t\t\t rbd >= rba &&\n" +
@@ -542,7 +782,8 @@ public class WinterBreakAutoBlue extends OpMode {
             "\t\tzero_motors();\n" +
             "\t}\n" +
             "\tforAllMotors(function(motor) {\n" +
-            "\t\tmotor.setMode(hardware.DcMotor.RunMode.RUN_TO_POSITION);\n" +
+            "\t\t\n" +
+            "motor.setMode(hardware.DcMotor.RunMode.RUN_TO_POSITION);\n" +
             "\t});\n" +
             "\tvar lbc = left_back.getCurrentPosition();\n" +
             "\tvar lfc = left_front.getCurrentPosition();\n" +
@@ -562,10 +803,14 @@ public class WinterBreakAutoBlue extends OpMode {
             "\t\tleft_front.setPower(lf > 0 ? power : -power);\n" +
             "\t\tright_back.setPower(rb > 0 ? power : -power);\n" +
             "\t\tright_front.setPower(rf > 0 ? power : -power);\n" +
-            "\t\tvar lbd = Math.abs(left_back.getCurrentPosition() - lbc);\n" +
-            "\t\tvar lfd = Math.abs(left_front.getCurrentPosition() - lfc);\n" +
-            "\t\tvar rbd = Math.abs(right_back.getCurrentPosition() - rbc);\n" +
-            "\t\tvar rfd = Math.abs(right_front.getCurrentPosition() - rfc);\n" +
+            "\t\tvar lbd = \n" +
+            "Math.abs(left_back.getCurrentPosition() - lbc);\n" +
+            "\t\tvar lfd = \n" +
+            "Math.abs(left_front.getCurrentPosition() - lfc);\n" +
+            "\t\tvar rbd = \n" +
+            "Math.abs(right_back.getCurrentPosition() - rbc);\n" +
+            "\t\tvar rfd = \n" +
+            "Math.abs(right_front.getCurrentPosition() - rfc);\n" +
             "\t\t\n" +
             "\t\tvar arr = [Math.abs(lbd - Math.abs(lb)) < 10,\n" +
             "\t\t\t  Math.abs(lfd - Math.abs(lf)) < 10,\n" +
@@ -587,8 +832,10 @@ public class WinterBreakAutoBlue extends OpMode {
             "}\n" +
             "\n" +
             "/*___\t_____\t_\t_\t____\t____\t_____\t__\t \n" +
-            " / __)(\t_\t)( \\( )(_\t_)(\t_ \\(\t_\t)(\t)\t\n" +
-            "( (__\t)(_)(\t)\t(\t )(\t )\t / )(_)(\t)(__ \n" +
+            " / __)(\t_\t)( \\( )(_\t_)(\t_ \\(\t_\t)(\t\n" +
+            ")\t\n" +
+            "( (__\t)(_)(\t)\t(\t )(\t )\t / )(_)(\t\n" +
+            ")(__ \n" +
             " \\___)(_____)(_)\\_) (__) (_)\\_)(_____)(____)\n" +
             "*/\n" +
             "function init() {\n" +
@@ -619,10 +866,14 @@ public class WinterBreakAutoBlue extends OpMode {
             "\tlatch = hardwareMap.crservo.get(\"latch\");\n" +
             "\tarm.setPower(0);\n" +
             "\tlatch.setPower(0);\n" +
+            "\tnavx = \n" +
+            "AHRS.getInstance(hardwareMap.deviceInterfaceModule.get(\"navx_controller\"), \n" +
+            "0, AHRS.DeviceDataType.kProcessedData);\n" +
             "\t\n" +
             "\t//initialize motors\n" +
             "\tforAllMotors(function(self) {\n" +
-            "\t\tself.setZeroPowerBehavior(hardware.DcMotor.ZeroPowerBehavior.FLOAT);\n" +
+            "\t\t\n" +
+            "self.setZeroPowerBehavior(hardware.DcMotor.ZeroPowerBehavior.FLOAT);\n" +
             "\t});\n" +
             "\tresetMotors();\n" +
             "\twhile(left_back.getCurrentPosition() != 0) {\n" +
@@ -687,8 +938,10 @@ public class WinterBreakAutoBlue extends OpMode {
             "\t//find matching ends and connect them with loops\n" +
             "\tfor(i = 0; i < commands.length; i++) {\n" +
             "\t\tif(commands[i].name == 'end_anon') {\n" +
-            "\t\t\tcommands[i].jumpindex = loops[commands[i].loopname];\n" +
-            "\t\t\tcommands[loops[commands[i].loopname]].jumpindex = i+1;\n" +
+            "\t\t\tcommands[i].jumpindex = \n" +
+            "loops[commands[i].loopname];\n" +
+            "\t\t\t\n" +
+            "commands[loops[commands[i].loopname]].jumpindex = i+1;\n" +
             "\t\t}\n" +
             "\t}\n" +
             "\t\n" +
@@ -713,25 +966,32 @@ public class WinterBreakAutoBlue extends OpMode {
             "\t\t\n" +
             "\t\tif(typeof elses[key] !== 'undefined') {\n" +
             "\t\t\t//there is a corresponding else\n" +
-            "\t\t\tcommands[ifs[key]].jumpindex = elses[key]+1;\n" +
+            "\t\t\tcommands[ifs[key]].jumpindex = \n" +
+            "elses[key]+1;\n" +
             "\t\t\tif(typeof fis[key] !== 'undefined') {\n" +
-            "\t\t\t\tcommands[elses[key]].jumpindex = fis[key]+1;\n" +
+            "\t\t\t\tcommands[elses[key]].jumpindex \n" +
+            "= fis[key]+1;\n" +
             "\t\t\t} else {\n" +
             "\t\t\t\tthrow(\"Unmatched if/else with fi.\");\n" +
             "\t\t\t}\n" +
             "\t\t} else if(typeof fis[key] !== 'undefined') {\n" +
             "\t\t\t//there is a corresponding fi\n" +
-            "\t\t\tcommands[ifs[key]].jumpindex = fis[key]+1;\n" +
+            "\t\t\tcommands[ifs[key]].jumpindex = \n" +
+            "fis[key]+1;\n" +
             "\t\t} else {\n" +
             "\t\t\tthrow(\"Unmatched if with fi\");\n" +
             "\t\t}\n" +
             "\t}\n" +
             "}\n" +
             "\n" +
-            "/*__\t__\t_____\t____\t_____\t____\t\t__\t__\t____\t____\t__\t \n" +
-            " (\t\\/\t)(\t_\t)(_\t_)(\t_\t)(\t_ \\\t(\t)(\t)(_\t_)(_\t_)(\t)\t\n" +
-            "\t)\t\t(\t)(_)(\t )(\t )(_)(\t)\t /\t )(__)(\t )(\t _)(_\t)(__ \n" +
-            " (_/\\/\\_)(_____) (__) (_____)(_)\\_)\t(______) (__) (____)(____)\n" +
+            "/*__\t__\t_____\t____\t_____\t____\t\t__\t\n" +
+            "__\t____\t____\t__\t \n" +
+            " (\t\\/\t)(\t_\t)(_\t_)(\t_\t)(\t\n" +
+            "_ \\\t(\t)(\t)(_\t_)(_\t_)(\t)\t\n" +
+            "\t)\t\t(\t)(_)(\t )(\t )(_)(\t)\t \n" +
+            "/\t )(__)(\t )(\t _)(_\t)(__ \n" +
+            " (_/\\/\\_)(_____) (__) (_____)(_)\\_)\t(______) (__) \n" +
+            "(____)(____)\n" +
             "*/\n" +
             "function forAllMotors(operation) {\n" +
             "\toperation(left_back);\n" +
@@ -743,7 +1003,8 @@ public class WinterBreakAutoBlue extends OpMode {
             "function resetMotors() {\n" +
             "\tarm.setPower(0);\n" +
             "\tforAllMotors(function(self) {\n" +
-            "\t\tself.setMode(hardware.DcMotor.RunMode.STOP_AND_RESET_ENCODER);\n" +
+            "\t\t\n" +
+            "self.setMode(hardware.DcMotor.RunMode.STOP_AND_RESET_ENCODER);\n" +
             "\t});\n" +
             "\tresetting = true;\n" +
             "}\n" +
@@ -754,10 +1015,14 @@ public class WinterBreakAutoBlue extends OpMode {
             "\t});\n" +
             "}\n" +
             "\n" +
-            "/*___\t ___\t____\t____\t____\t____\t\t__\t__\t____\t____\t__\t\t___ \n" +
-            " / __) / __)(\t_ \\(_\t_)(\t_ \\(_\t_)\t(\t)(\t)(_\t_)(_\t_)(\t)\t/ __)\n" +
-            " \\__ \\( (__\t)\t / _)(_\t)___/\t)(\t\t )(__)(\t )(\t _)(_\t)(__ \\__ \\\n" +
-            " (___/ \\___)(_)\\_)(____)(__)\t (__)\t (______) (__) (____)(____)(___/\n" +
+            "/*___\t ___\t____\t____\t____\t____\t\t__\t\n" +
+            "__\t____\t____\t__\t\t___ \n" +
+            " / __) / __)(\t_ \\(_\t_)(\t_ \\(_\t_)\t(\t)(\t\n" +
+            ")(_\t_)(_\t_)(\t)\t/ __)\n" +
+            " \\__ \\( (__\t)\t / _)(_\t)___/\t)(\t\t )(__)(\t \n" +
+            ")(\t _)(_\t)(__ \\__ \\\n" +
+            " (___/ \\___)(_)\\_)(____)(__)\t (__)\t (______) (__) \n" +
+            "(____)(____)(___/\n" +
             "*/\n" +
             "function next() {\n" +
             "\tcommandIndex++;\n" +
@@ -868,7 +1133,8 @@ public class WinterBreakAutoBlue extends OpMode {
             "\t\t\tif(ret.check() === true) {\n" +
             "\t\t\t\tnext();\n" +
             "\t\t\t} else {\n" +
-            "\t\t\t\tjmp(commands[commandIndex].jumpindex);\n" +
+            "\t\t\t\t\n" +
+            "jmp(commands[commandIndex].jumpindex);\n" +
             "\t\t\t}\n" +
             "\t\t}\n" +
             "\t};\n" +
@@ -907,7 +1173,8 @@ public class WinterBreakAutoBlue extends OpMode {
             "\n" +
             "function _done(str) {\n" +
             "\tvar ret = function end_anon() {\n" +
-            "\t\tvar loopbegin = commands[commandIndex].jumpindex;\n" +
+            "\t\tvar loopbegin = \n" +
+            "commands[commandIndex].jumpindex;\n" +
             "\t\tvar checker = commands[loopbegin].check;\n" +
             "\t\tif(checker !== undefined) {\n" +
             "\t\t\tif(!checker()) {\n" +
@@ -941,10 +1208,12 @@ public class WinterBreakAutoBlue extends OpMode {
             "function reset_motors() {\n" +
             "\treturn function() {\n" +
             "\t\tforAllMotors(function(self) {\n" +
-            "\t\t\tself.setMode(hardware.DcMotor.RunMode.STOP_AND_RESET_ENCODER);\n" +
+            "\t\t\t\n" +
+            "self.setMode(hardware.DcMotor.RunMode.STOP_AND_RESET_ENCODER);\n" +
             "\t\t});\n" +
             "\t\treturn function() {\n" +
-            "\t\t\tvar ret = left_back.getCurrentPosition() == 0;\n" +
+            "\t\t\tvar ret = \n" +
+            "left_back.getCurrentPosition() == 0;\n" +
             "\t\t\tif(ret) {\n" +
             "\t\t\t\tnext();\n" +
             "\t\t\t}\n" +
@@ -977,5 +1246,10 @@ public class WinterBreakAutoBlue extends OpMode {
             "\t\t}\n" +
             "\t});\n" +
             "}\n" +
+            "\n" +
+            "\n" +
+            "\n" +
+            "\n" +
+            "\n" +
             "\n";
 }

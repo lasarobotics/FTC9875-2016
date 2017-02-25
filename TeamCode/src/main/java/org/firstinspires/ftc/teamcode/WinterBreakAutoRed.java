@@ -1,7 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.*;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.ScriptableObject;
 import org.mozilla.javascript.Function;
@@ -10,6 +9,7 @@ import org.mozilla.javascript.Function;
  * Created by Russell on 11/23/2016.
  */
 
+@Disabled
 @Autonomous(name = "wb-red", group = "test")
 public class WinterBreakAutoRed extends OpMode {
     private static Script scriptObj;

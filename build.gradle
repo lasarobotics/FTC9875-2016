@@ -8,8 +8,6 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.3.0-beta2'
+        classpath 'com.android.tools.build:gradle:2.3.0-rc1'
     }
 }
-
-

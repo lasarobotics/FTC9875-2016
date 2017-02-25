@@ -69,6 +69,8 @@ public class JavascriptServer extends OpMode {
     private static final Object lock = new Object();
     private ThreadSafeData<Boolean> isLooping = new ThreadSafeData<>();
 
+    private volatile boolean context = false;
+
     private void deleteOtherThread() {
         synchronized(lock) {
             if(serverThread != null) {
@@ -134,7 +136,10 @@ public class JavascriptServer extends OpMode {
             }
 
             synchronized(scriptLock) {
-                Context.exit();
+                if (context) {
+                    Context.exit();
+                    context = false;
+                }
             }
         }
 
@@ -181,6 +186,7 @@ public class JavascriptServer extends OpMode {
         private void createContext() {
             synchronized(scriptLock) {
                 cx = Context.enter();
+                context = true;
                 cx.setOptimizationLevel(-1); //make compatible with Android
 
                 scope = cx.initStandardObjects();
@@ -192,7 +198,10 @@ public class JavascriptServer extends OpMode {
         }
 
         public void clearContext() {
-            Context.exit();
+            if (context) {
+                Context.exit();
+                context = false;
+            }
             createContext();
         }
     }
